@@ -1,0 +1,14 @@
+[Unit]
+Description=RPi Dashboard Backend
+After=network.target
+
+[Service]
+Type=simple
+User=diogo
+WorkingDirectory=/home/diogo/dashboard
+ExecStart=/usr/bin/python3 /home/diogo/dashboard/server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

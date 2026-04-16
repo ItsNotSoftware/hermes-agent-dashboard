@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=800, height=480">
+<title>RPi Dashboard</title>
+<style>
+  :root {
+    --bg: #0a0e17; --card: #111827; --border: #1e293b;
+    --text: #e2e8f0; --dim: #64748b; --accent: #38bdf8;
+    --green: #22c55e; --orange: #f59e0b; --red: #ef4444; --purple: #a78bfa; --cyan: #06b6d4;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'JetBrains Mono','Courier New',monospace; padding:6px; overflow:hidden; width:800px; height:480px; user-select:none; }
+
+  /* ── Header ─────────────────────────────────────── */
+  .header { display:flex; justify-content:space-between; align-items:center; padding:4px 10px; margin-bottom:6px; background:var(--card); border-radius:6px; border:1px solid var(--border); }
+  .header h1 { font-size:13px; color:var(--accent); letter-spacing:2px; }
+  .header .clock { font-size:12px; color:var(--dim); }
+  .dot { width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:4px; }
+  .dot.on { background:var(--green); box-shadow:0 0 5px var(--green); }
+  .dot.off { background:var(--red); box-shadow:0 0 5px var(--red); }
+  .status { font-size:10px; display:flex; align-items:center; }
+  .model-tag { display:inline-block; padding:1px 7px; border-radius:4px; font-size:10px; background:rgba(56,189,248,0.1); color:var(--accent); border:1px solid rgba(56,189,248,0.25); }
+
+  /* ── Card base ──────────────────────────────────── */
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:8px 10px; display:flex; position:relative; overflow:hidden; }
+  .card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg, var(--accent), var(--purple), var(--cyan)); opacity:0.45; }
+  .card-title { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px; display:flex; align-items:center; gap:5px; flex-shrink:0; }
+
+  /* ── Layout ─────────────────────────────────────── */
+  .top-row    { display:grid; grid-template-columns:1fr 1fr; gap:6px; height:148px; margin-bottom:6px; }
+  .mid-row    { display:grid; grid-template-columns:1fr 220px; gap:6px; height:86px; margin-bottom:6px; }
+  .bottom-row { display:grid; grid-template-columns:1fr 2fr; gap:6px; height:198px; }
+
+  /* ── CPU widget ──────────────────────────────────── */
+  .cpu-main { display:flex; align-items:stretch; gap:14px; flex:1; height:100%; }
+  .cpu-gauge { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; flex-shrink:0; width:86px; padding-top:4px; }
+  .cpu-gauge svg { display:block; }
+  .cpu-gauge-pct { font-size:24px; font-weight:bold; line-height:1; margin-top:2px; }
+  .cpu-gauge-label { font-size:8px; color:var(--dim); letter-spacing:2px; margin-top:2px; }
+  .cpu-gauge-chips { display:flex; flex-direction:column; gap:4px; margin-top:6px; width:100%; }
+  .cpu-chip { font-size:10px; padding:2px 6px; border-radius:3px; background:rgba(255,255,255,0.05); border:1px solid var(--border); white-space:nowrap; text-align:center; }
+  .cpu-cores { flex:1; display:flex; flex-direction:column; justify-content:space-between; min-width:0; padding:4px 0 2px; }
+  .core-row { display:flex; align-items:center; gap:7px; }
+  .core-lbl { font-size:10px; color:var(--dim); width:16px; text-align:right; flex-shrink:0; }
+  .core-track { flex:1; height:9px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden; position:relative; }
+  .core-fill { height:100%; border-radius:4px; transition:width 0.6s ease; position:relative; }
+  .core-fill::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg,rgba(255,255,255,0.15) 0%,transparent 100%); border-radius:4px; }
+  .core-pct { font-size:10px; font-weight:bold; width:30px; text-align:right; flex-shrink:0; }
+
+  /* ── Resources widget ───────────────────────────── */
+  .res-body { flex:1; display:flex; flex-direction:column; justify-content:space-between; }
+  .res-row { display:flex; flex-direction:column; gap:2px; }
+  .res-header { display:flex; justify-content:space-between; align-items:baseline; }
+  .res-label { font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; gap:4px; }
+  .res-pct { font-size:15px; font-weight:bold; }
+  .res-track { height:7px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; position:relative; }
+  .res-fill { height:100%; border-radius:4px; transition:width 0.8s ease; position:relative; }
+  .res-fill::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg,rgba(255,255,255,0.18) 0%,transparent 100%); border-radius:4px; }
+  .res-detail { font-size:9px; color:var(--dim); }
+  .res-footer { display:flex; gap:12px; font-size:10px; color:var(--dim); padding-top:1px; border-top:1px solid var(--border); margin-top:2px; }
+  .res-footer span { display:flex; align-items:center; gap:4px; }
+  .res-footer b { color:var(--text); font-weight:normal; }
+
+  /* ── OpenRouter ──────────────────────────────────── */
+  .or-widget { display:flex; gap:10px; flex:1; align-items:stretch; }
+  .or-left { flex:1; display:flex; flex-direction:column; justify-content:space-between; min-width:0; }
+  .or-hero { display:flex; align-items:baseline; gap:6px; }
+  .or-hero-amount { font-size:26px; font-weight:bold; line-height:1; }
+  .or-hero-label { font-size:10px; color:var(--dim); }
+  .or-hero-limit { font-size:11px; color:var(--dim); }
+  .or-budget-row { display:flex; align-items:center; gap:8px; }
+  .or-budget-track { flex:1; height:10px; background:rgba(255,255,255,0.06); border-radius:5px; overflow:hidden; }
+  .or-budget-fill { height:100%; border-radius:5px; transition:width 0.8s ease; position:relative; }
+  .or-budget-fill::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg,rgba(255,255,255,0.2) 0%,transparent 60%); border-radius:5px; }
+  .or-budget-pct { font-size:11px; font-weight:bold; width:36px; text-align:right; flex-shrink:0; }
+  .or-stats { display:flex; gap:0; }
+  .or-stat { flex:1; display:flex; flex-direction:column; border-right:1px solid var(--border); padding-right:10px; margin-right:10px; }
+  .or-stat:last-child { border-right:none; padding-right:0; margin-right:0; }
+  .or-stat-label { font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; }
+  .or-stat-value { font-size:14px; font-weight:bold; margin-top:1px; }
+  .or-sparkline { width:80px; display:flex; flex-direction:column; flex-shrink:0; }
+  .or-spark-label { font-size:9px; color:var(--dim); letter-spacing:1px; text-transform:uppercase; margin-bottom:4px; }
+  .or-spark-bars { display:flex; align-items:flex-end; gap:3px; flex:1; }
+  .or-spark-bar { flex:1; border-radius:2px 2px 0 0; min-height:2px; transition:height 0.6s ease; }
+
+  /* ── Network widget ──────────────────────────────── */
+  .net-widget { display:flex; flex:1; gap:1px; border-radius:6px; overflow:hidden; }
+  .net-half { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:6px 4px; gap:1px; border-radius:0; }
+  .net-half.down { background:rgba(34,197,94,0.06); border-right:1px solid var(--border); }
+  .net-half.up   { background:rgba(56,189,248,0.06); }
+  .net-arrow { font-size:10px; font-weight:bold; letter-spacing:1px; }
+  .net-speed { font-size:22px; font-weight:bold; line-height:1; }
+  .net-unit { font-size:10px; color:var(--dim); }
+  .net-label { font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; margin-top:1px; }
+
+  /* ── Cron widget ─────────────────────────────────── */
+  .cron-list { flex:1; display:flex; flex-direction:column; gap:0; overflow:hidden; }
+  .cron-item { display:flex; gap:8px; align-items:stretch; padding:5px 0; border-bottom:1px solid var(--border); }
+  .cron-item:last-child { border-bottom:none; }
+  .cron-strip { width:3px; border-radius:2px; flex-shrink:0; }
+  .cron-strip.active { background:var(--green); }
+  .cron-strip.paused { background:var(--red); opacity:0.5; }
+  .cron-body { flex:1; min-width:0; }
+  .cron-name { font-size:11px; font-weight:bold; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:5px; }
+  .cron-badge { font-size:8px; padding:1px 5px; border-radius:3px; font-weight:normal; flex-shrink:0; }
+  .cron-badge.active { background:rgba(34,197,94,0.12); color:var(--green); }
+  .cron-badge.paused { background:rgba(239,68,68,0.12); color:var(--red); }
+  .cron-meta { font-size:10px; color:var(--dim); margin-top:1px; }
+  .cron-status { font-size:10px; flex-shrink:0; }
+
+  /* ── Processes widget ────────────────────────────── */
+  .proc-table { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  .proc-thead { display:grid; grid-template-columns:1fr 52px 52px 52px; gap:0; padding:0 0 4px; border-bottom:1px solid var(--border); margin-bottom:2px; }
+  .proc-th { font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; }
+  .proc-th.r { text-align:right; }
+  .proc-rows { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  .proc-row { display:grid; grid-template-columns:1fr 52px 52px 52px; gap:0; padding:3px 0; border-bottom:1px solid rgba(30,41,59,0.6); align-items:center; }
+  .proc-row:last-child { border-bottom:none; }
+  .proc-row:hover { background:rgba(255,255,255,0.02); }
+  .proc-cmd { font-size:10px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:6px; }
+  .proc-cmd .proc-exe { color:var(--text); }
+  .proc-cmd .proc-args { color:var(--dim); }
+  .proc-cell { font-size:10px; font-weight:bold; text-align:right; }
+  .proc-user { font-size:9px; color:var(--dim); text-align:right; font-weight:normal; }
+
+
+  @keyframes glow { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .pulse { animation:glow 2s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <h1>⚡ RPi DASHBOARD</h1>
+  <span class="model-tag" id="model-tag">--</span>
+  <span class="clock" id="clock">--:--:--</span>
+  <span class="status"><span class="dot on pulse" id="live-dot"></span><span id="status-text">LIVE</span></span>
+  <button onclick="exitDashboard()" style="background:none;border:1px solid var(--border);color:var(--dim);border-radius:4px;cursor:pointer;padding:2px 8px;font-size:10px;font-family:inherit;margin-left:6px;">✕ Quit</button>
+</div>
+
+<!-- TOP ROW: CPU + Resources -->
+<div class="top-row">
+
+  <!-- CPU Card -->
+  <div class="card">
+    <div class="cpu-main">
+      <div class="cpu-gauge">
+        <svg viewBox="0 0 86 48" width="86" height="48">
+          <defs>
+            <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          <path d="M 8,44 A 35,35 0 0 1 78,44" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="9" stroke-linecap="round"/>
+          <path d="M 8,44 A 35,35 0 0 1 78,44" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="14" stroke-linecap="round" stroke-dasharray="2 8.9"/>
+          <path id="cpu-arc" d="M 8,44 A 35,35 0 0 1 78,44" fill="none" stroke="var(--green)" stroke-width="9" stroke-linecap="round"
+                stroke-dasharray="109.96" stroke-dashoffset="109.96" filter="url(#glow)"
+                style="transition:stroke-dashoffset 0.6s ease,stroke 0.4s ease"/>
+        </svg>
+        <span class="cpu-gauge-pct" id="cpu-pct" style="color:var(--green)">--%</span>
+        <span class="cpu-gauge-label">CPU</span>
+        <div class="cpu-gauge-chips">
+          <span class="cpu-chip" id="temp-val" style="color:var(--green)">🌡 --°</span>
+          <span class="cpu-chip" id="freq-val" style="color:var(--cyan)">⚡ --</span>
+        </div>
+      </div>
+      <div class="cpu-cores">
+        <div class="core-row"><span class="core-lbl">C0</span><div class="core-track"><div class="core-fill" id="cf-0" style="width:0%;background:var(--green)"></div></div><span class="core-pct" id="cp-0" style="color:var(--green)">0%</span></div>
+        <div class="core-row"><span class="core-lbl">C1</span><div class="core-track"><div class="core-fill" id="cf-1" style="width:0%;background:var(--green)"></div></div><span class="core-pct" id="cp-1" style="color:var(--green)">0%</span></div>
+        <div class="core-row"><span class="core-lbl">C2</span><div class="core-track"><div class="core-fill" id="cf-2" style="width:0%;background:var(--green)"></div></div><span class="core-pct" id="cp-2" style="color:var(--green)">0%</span></div>
+        <div class="core-row"><span class="core-lbl">C3</span><div class="core-track"><div class="core-fill" id="cf-3" style="width:0%;background:var(--green)"></div></div><span class="core-pct" id="cp-3" style="color:var(--green)">0%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resources Card -->
+  <div class="card">
+    <div class="res-body">
+      <div class="res-row">
+        <div class="res-header">
+          <span class="res-label">🧠 RAM</span>
+          <span class="res-pct" id="ram-val" style="color:var(--green)">--%</span>
+        </div>
+        <div class="res-track"><div class="res-fill" id="ram-bar" style="width:0%;background:var(--green)"></div></div>
+        <span class="res-detail" id="ram-detail">-- / --</span>
+      </div>
+      <div class="res-row">
+        <div class="res-header">
+          <span class="res-label">💾 Disk</span>
+          <span class="res-pct" id="disk-val" style="color:var(--green)">--%</span>
+        </div>
+        <div class="res-track"><div class="res-fill" id="disk-bar" style="width:0%;background:var(--green)"></div></div>
+        <span class="res-detail" id="disk-detail">-- / --</span>
+      </div>
+      <div class="res-row">
+        <div class="res-header">
+          <span class="res-label">🔄 Swap</span>
+          <span class="res-pct" id="swap-val" style="color:var(--green)">--%</span>
+        </div>
+        <div class="res-track"><div class="res-fill" id="swap-bar" style="width:0%;background:var(--green)"></div></div>
+        <span class="res-detail" id="swap-detail">-- / --</span>
+      </div>
+      <div class="res-footer">
+        <span>⏰ <b id="uptime-val">--</b></span>
+        <span>📀 R:<b id="disk-rd">--</b> W:<b id="disk-wt">--</b></span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MIDDLE ROW: OpenRouter + Network -->
+<div class="mid-row">
+
+  <!-- OpenRouter Card -->
+  <div class="card">
+    <div class="or-widget">
+      <div class="or-left">
+        <div class="or-hero">
+          <span style="font-size:14px;">💰</span>
+          <span class="or-hero-amount" id="or-total" style="color:var(--green)">$--</span>
+          <span class="or-hero-label">spent</span>
+          <span class="or-hero-limit" id="or-limit-label">/ $--</span>
+        </div>
+        <div class="or-budget-row">
+          <div class="or-budget-track">
+            <div class="or-budget-fill" id="or-bar" style="width:0%;background:var(--green)"></div>
+          </div>
+          <span class="or-budget-pct" id="or-pct" style="color:var(--green)">0%</span>
+        </div>
+        <div class="or-stats">
+          <div class="or-stat">
+            <span class="or-stat-label">Today</span>
+            <span class="or-stat-value" id="or-daily" style="color:var(--cyan)">$--</span>
+          </div>
+          <div class="or-stat">
+            <span class="or-stat-label">Week</span>
+            <span class="or-stat-value" id="or-weekly" style="color:var(--accent)">$--</span>
+          </div>
+          <div class="or-stat">
+            <span class="or-stat-label">Left</span>
+            <span class="or-stat-value" id="or-remain" style="color:var(--green)">$--</span>
+          </div>
+        </div>
+      </div>
+      <div class="or-sparkline">
+        <span class="or-spark-label">7 days</span>
+        <div class="or-spark-bars" id="history-bars"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Network Speed Card -->
+  <div class="card" style="padding:0;border-radius:8px;overflow:hidden;">
+    <div class="net-widget">
+      <div class="net-half down">
+        <span class="net-arrow" style="color:var(--green)">▼ DOWN</span>
+        <span class="net-speed" id="net-down-speed" style="color:var(--green)">--</span>
+        <span class="net-unit" id="net-down-unit">--/s</span>
+      </div>
+      <div class="net-half up">
+        <span class="net-arrow" style="color:var(--accent)">▲ UP</span>
+        <span class="net-speed" id="net-up-speed" style="color:var(--accent)">--</span>
+        <span class="net-unit" id="net-up-unit">--/s</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM ROW -->
+<div class="bottom-row">
+
+  <!-- Cron Jobs -->
+  <div class="card" style="flex-direction:column;">
+    <div class="card-title">⏱ CRON JOBS</div>
+    <div class="cron-list" id="cron-jobs"></div>
+  </div>
+
+  <!-- Processes (htop-style) -->
+  <div class="card" style="flex-direction:column;">
+    <div class="card-title">⚙️ PROCESSES</div>
+    <div class="proc-table">
+      <div class="proc-thead">
+        <span class="proc-th">Command</span>
+        <span class="proc-th r">CPU%</span>
+        <span class="proc-th r">MEM%</span>
+        <span class="proc-th r">User</span>
+      </div>
+      <div class="proc-rows" id="procs"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var CPU_CIRC = Math.PI * 35;
+
+function color(p) { return p<50?'var(--green)':p<80?'var(--orange)':'var(--red)'; }
+function tempColor(t) { return t<60?'var(--green)':t<75?'var(--orange)':'var(--red)'; }
+function formatSpeed(b) {
+  if(b >= 1e9) return {v:(b/1e9).toFixed(1), u:'GB/s'};
+  if(b >= 1e6) return {v:(b/1e6).toFixed(1), u:'MB/s'};
+  if(b >= 1e3) return {v:(b/1e3).toFixed(0), u:'KB/s'};
+  return {v:b.toFixed(0), u:'B/s'};
+}
+function formatUptime(s) {
+  var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);
+  return d>0?d+'d '+h+'h':h+'h '+m+'m';
+}
+function pad(n){return n<10?'0'+n:''+n;}
+
+function updateClock(){
+  var n=new Date();
+  document.getElementById('clock').textContent=pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());
+}
+
+async function fetchMetrics(){
+  try{
+    var r = await fetch('/api/status');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var d = await r.json();
+
+    // ── CPU arc ──────────────────────────────────────
+    var cpuObj = d.cpu && typeof d.cpu === 'object' ? d.cpu : {total:d.cpu, cores:[]};
+    var cpuPct = Math.min(cpuObj.total || 0, 100);
+    var arc = document.getElementById('cpu-arc');
+    arc.style.strokeDashoffset = CPU_CIRC * (1 - cpuPct/100);
+    arc.style.stroke = color(cpuPct);
+    var pctEl = document.getElementById('cpu-pct');
+    pctEl.textContent = cpuPct.toFixed(0)+'%';
+    pctEl.style.color = color(cpuPct);
+
+    var t = d.temp || 0;
+    document.getElementById('temp-val').textContent = '🌡 '+t.toFixed(1)+'°';
+    document.getElementById('temp-val').style.color = tempColor(t);
+    document.getElementById('freq-val').textContent = '⚡ '+d.cpuFreq;
+
+    var cores = cpuObj.cores || [];
+    cores.forEach(function(v, i){
+      var fill = document.getElementById('cf-'+i);
+      var pct  = document.getElementById('cp-'+i);
+      if(fill){ fill.style.width = v+'%'; fill.style.background = color(v); }
+      if(pct){ pct.textContent = v.toFixed(0)+'%'; pct.style.color = color(v); }
+    });
+
+    // ── Resources ────────────────────────────────────
+    var mp = d.memory.used/d.memory.total*100;
+    document.getElementById('ram-val').textContent = mp.toFixed(0)+'%';
+    document.getElementById('ram-val').style.color = color(mp);
+    document.getElementById('ram-detail').textContent = d.memory.used.toFixed(0)+' MB / '+d.memory.total.toFixed(0)+' MB';
+    var rb=document.getElementById('ram-bar'); rb.style.width=mp+'%'; rb.style.background=color(mp);
+
+    var dp = d.disk.used/d.disk.total*100;
+    document.getElementById('disk-val').textContent = dp.toFixed(0)+'%';
+    document.getElementById('disk-val').style.color = color(dp);
+    document.getElementById('disk-detail').textContent = d.disk.used.toFixed(1)+' GB / '+d.disk.total.toFixed(1)+' GB';
+    var db=document.getElementById('disk-bar'); db.style.width=dp+'%'; db.style.background=color(dp);
+
+    var sp = d.swap.total>0?(d.swap.used/d.swap.total*100):0;
+    document.getElementById('swap-val').textContent = sp.toFixed(0)+'%';
+    document.getElementById('swap-val').style.color = color(sp);
+    document.getElementById('swap-detail').textContent = d.swap.used.toFixed(0)+' MB / '+d.swap.total.toFixed(0)+' MB';
+    var sb=document.getElementById('swap-bar'); sb.style.width=sp+'%'; sb.style.background=color(sp);
+
+    document.getElementById('uptime-val').textContent = formatUptime(d.uptime);
+    var drd=formatSpeed(d.diskRd||0), dwt=formatSpeed(d.diskWt||0);
+    document.getElementById('disk-rd').textContent = drd.v+drd.u;
+    document.getElementById('disk-wt').textContent = dwt.v+dwt.u;
+
+    // ── Network ──────────────────────────────────────
+    var dl=formatSpeed(d.netRx||0), ul=formatSpeed(d.netTx||0);
+    document.getElementById('net-down-speed').textContent = dl.v;
+    document.getElementById('net-down-unit').textContent  = dl.u;
+    document.getElementById('net-up-speed').textContent   = ul.v;
+    document.getElementById('net-up-unit').textContent    = ul.u;
+
+    // ── OpenRouter ───────────────────────────────────
+    if(d.or && d.or.data){
+      var o = d.or.data;
+      var opct = Math.min((o.usage_monthly/o.limit)*100, 100);
+      var oc = color(opct);
+      document.getElementById('or-total').textContent = '$'+o.usage_monthly.toFixed(2);
+      document.getElementById('or-total').style.color = oc;
+      document.getElementById('or-limit-label').textContent = '/ $'+o.limit.toFixed(0);
+      document.getElementById('or-daily').textContent  = '$'+o.usage_daily.toFixed(2);
+      document.getElementById('or-weekly').textContent = '$'+o.usage_weekly.toFixed(2);
+      var rem = o.limit - o.usage_monthly;
+      document.getElementById('or-remain').textContent = '$'+rem.toFixed(2);
+      document.getElementById('or-remain').style.color = rem < o.limit*0.2 ? 'var(--red)' : rem < o.limit*0.5 ? 'var(--orange)' : 'var(--green)';
+      var orb=document.getElementById('or-bar');
+      orb.style.width=opct+'%';
+      orb.style.background='linear-gradient(90deg,var(--cyan),'+oc+')';
+      document.getElementById('or-pct').textContent = opct.toFixed(0)+'%';
+      document.getElementById('or-pct').style.color = oc;
+
+      var hdiv=document.getElementById('history-bars'); hdiv.innerHTML='';
+      var dh=d.or.daily_history||[];
+      if(dh.length){
+        var mx=Math.max.apply(null,dh.map(function(x){return x.val})); if(mx<.5)mx=.5;
+        dh.forEach(function(x){
+          var bar=document.createElement('div'); bar.className='or-spark-bar';
+          var bg=x.val===0?'rgba(255,255,255,0.08)':x.val>2?'var(--orange)':'var(--accent)';
+          bar.style.cssText='height:'+Math.max(3,(x.val/mx)*100)+'%;background:'+bg+';';
+          bar.title=x.label+': $'+x.val.toFixed(3);
+          hdiv.appendChild(bar);
+        });
+      }
+    }
+
+    // ── Cron jobs ────────────────────────────────────
+    var cdiv=document.getElementById('cron-jobs'); cdiv.innerHTML='';
+    if(d.crons && d.crons.length){
+      d.crons.forEach(function(c){
+        var state=(c.state||'active')==='paused'?'paused':'active';
+        var statusDot=c.last_status==='ok'
+          ?'<span style="color:var(--green);font-size:11px;">✓</span>'
+          :c.last_status
+            ?'<span style="color:var(--red);font-size:11px;">✗</span>'
+            :'';
+        cdiv.innerHTML+='<div class="cron-item">'
+          +'<div class="cron-strip '+state+'"></div>'
+          +'<div class="cron-body">'
+          +'<div class="cron-name">'+statusDot+(c.name||'Unnamed')
+          +' <span class="cron-badge '+state+'">'+state+'</span></div>'
+          +'<div class="cron-meta">'+((c.next_run||'N/A'))+'</div>'
+          +'</div></div>';
+      });
+    } else {
+      cdiv.innerHTML='<div style="color:var(--dim);font-size:10px;padding-top:8px;">No jobs scheduled</div>';
+    }
+
+    // ── Processes ────────────────────────────────────
+    var pdiv=document.getElementById('procs'); pdiv.innerHTML='';
+    if(d.procs && d.procs.length){
+      d.procs.forEach(function(p){
+        var cc=color(p.cpu);
+        var mc=p.mem>20?'var(--red)':p.mem>10?'var(--orange)':'var(--dim)';
+        // split exe from args for highlighting
+        var parts=p.name.split(' ');
+        var exe=parts[0];
+        var args=parts.slice(1).join(' ');
+        var cmdHtml='<span class="proc-exe">'+exe+'</span>'
+          +(args?' <span class="proc-args">'+args+'</span>':'');
+        pdiv.innerHTML+='<div class="proc-row">'
+          +'<span class="proc-cmd" title="'+p.name+'">'+cmdHtml+'</span>'
+          +'<span class="proc-cell" style="color:'+cc+'">'+p.cpu.toFixed(1)+'</span>'
+          +'<span class="proc-cell" style="color:'+mc+'">'+p.mem.toFixed(1)+'</span>'
+          +'<span class="proc-user">'+p.user+'</span>'
+          +'</div>';
+      });
+    }
+
+    // ── Model + status ───────────────────────────────
+    if(d.hermes_model) document.getElementById('model-tag').textContent='🤖 '+d.hermes_model;
+    document.getElementById('live-dot').className='dot on pulse';
+    document.getElementById('status-text').textContent='LIVE';
+
+  } catch(e){
+    console.error('Fetch error:', e);
+    document.getElementById('live-dot').className='dot off';
+    document.getElementById('status-text').textContent='OFFLINE';
+  }
+}
+
+function exitDashboard(){
+  fetch('/api/exit',{keepalive:true});
+  setTimeout(function(){window.close()},500);
+}
+
+setInterval(updateClock,1000); updateClock();
+fetchMetrics();
+setInterval(fetchMetrics,2000);
+</script>
+</body>
+</html>
