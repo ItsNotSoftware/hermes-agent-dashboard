@@ -4,23 +4,4 @@ A lightweight dashboard for monitoring a [Hermes](https://github.com/nousresearc
 
 ![Dashboard](dashboard.png)
 
-## Features
-
-- CPU usage (per-core + aggregate), temperature, and frequency
-- RAM, disk, and swap usage
-- Network throughput (up/down)
-- Disk I/O (read/write)
-- OpenRouter spend tracking (daily, weekly, monthly + 7-day sparkline)
-- Hermes cron job status
-- Top processes (htop-style)
-
-## Usage
-
-The backend reads the OpenRouter API key from `~/.hermes/.env`:
-
-Launch the dashboard:
-
-```bash
-bash launch.sh
-```
 
