@@ -50,7 +50,8 @@
   .core-pct { font-size:12px; font-weight:bold; width:34px; text-align:right; flex-shrink:0; }
 
   /* ── Resources widget ───────────────────────────── */
-  .res-body { flex:1; display:flex; flex-direction:column; justify-content:center; gap:18px; }
+  .res-body { flex:1; display:flex; flex-direction:column; justify-content:space-between; }
+  .res-section { display:flex; flex-direction:column; gap:3px; }
   .res-row { display:flex; align-items:center; gap:6px; }
   .res-lbl-left { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; width:30px; flex-shrink:0; }
   .res-track { flex:1; height:7px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; position:relative; }
@@ -58,24 +59,37 @@
   .res-fill::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg,rgba(255,255,255,0.18) 0%,transparent 100%); border-radius:4px; }
   .res-pct { font-size:13px; font-weight:bold; width:32px; text-align:right; flex-shrink:0; }
   .res-detail { font-size:10px; color:var(--dim); width:90px; text-align:right; flex-shrink:0; white-space:nowrap; }
+  .res-sub { display:flex; gap:10px; font-size:10px; color:var(--dim); padding-left:36px; }
+  .res-sub b { color:var(--text); font-weight:normal; }
 
-  /* ── OpenRouter ──────────────────────────────────── */
-  .or-widget { display:flex; gap:10px; flex:1; align-items:stretch; }
-  .or-left { flex:1; display:flex; flex-direction:column; justify-content:space-between; min-width:0; }
-  .or-hero { display:flex; align-items:baseline; gap:6px; }
-  .or-hero-amount { font-size:26px; font-weight:bold; line-height:1; }
-  .or-hero-label { font-size:12px; color:var(--dim); }
-  .or-hero-limit { font-size:13px; color:var(--dim); }
-  .or-budget-row { display:flex; align-items:center; gap:8px; }
-  .or-budget-track { flex:1; height:10px; background:rgba(255,255,255,0.06); border-radius:5px; overflow:hidden; }
-  .or-budget-fill { height:100%; border-radius:5px; transition:width 0.8s ease; position:relative; }
-  .or-budget-fill::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg,rgba(255,255,255,0.2) 0%,transparent 60%); border-radius:5px; }
-  .or-budget-pct { font-size:13px; font-weight:bold; width:40px; text-align:right; flex-shrink:0; }
-  .or-stats { display:flex; gap:0; }
-  .or-stat { flex:1; display:flex; flex-direction:column; border-right:1px solid var(--border); padding-right:10px; margin-right:10px; }
-  .or-stat:last-child { border-right:none; padding-right:0; margin-right:0; }
-  .or-stat-label { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; }
-  .or-stat-value { font-size:16px; font-weight:bold; margin-top:1px; }
+  /* ── OpenAI Plan ─────────────────────────────────── */
+  .plan-widget { display:flex; flex:1; min-width:0; }
+  .plan-left { flex:1; display:flex; flex-direction:column; min-width:0; gap:7px; }
+  .plan-header { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .plan-heading { display:flex; align-items:center; gap:8px; min-width:0; }
+  .plan-icon { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, rgba(6,182,212,0.16), rgba(56,189,248,0.05)); border:1px solid rgba(56,189,248,0.18); font-size:14px; flex-shrink:0; }
+  .plan-titleblock { display:flex; flex-direction:column; min-width:0; }
+  .plan-hero-amount { font-size:21px; font-weight:bold; line-height:1; text-transform:uppercase; letter-spacing:1px; }
+  .plan-hero-label { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:1.3px; margin-top:3px; }
+  .plan-badge { padding:4px 8px; border-radius:999px; font-size:10px; text-transform:uppercase; letter-spacing:1px; border:1px solid var(--border); background:rgba(255,255,255,0.04); white-space:nowrap; }
+  .plan-badge.ok { color:var(--green); background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.22); }
+  .plan-badge.warn { color:var(--orange); background:rgba(245,158,11,0.10); border-color:rgba(245,158,11,0.22); }
+  .plan-badge.hit { color:var(--red); background:rgba(239,68,68,0.10); border-color:rgba(239,68,68,0.24); }
+  .plan-windows { display:grid; grid-template-columns:1fr 1fr; gap:7px; flex:1; min-width:0; }
+  .plan-window { position:relative; display:flex; flex-direction:column; justify-content:space-between; min-width:0; padding:8px; border-radius:8px; border:1px solid var(--border); background:
+      linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
+      rgba(255,255,255,0.015); }
+  .plan-window::before { content:''; position:absolute; inset:0 0 auto 0; height:2px; border-radius:8px 8px 0 0; opacity:0.7; }
+  .plan-window.primary::before { background:linear-gradient(90deg, var(--cyan), var(--accent)); }
+  .plan-window.secondary::before { background:linear-gradient(90deg, var(--accent), var(--purple)); }
+  .plan-window-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+  .plan-window-label { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:1.2px; }
+  .plan-window-reset { font-size:10px; color:var(--dim); text-align:right; line-height:1.25; }
+  .plan-window-pct { font-size:24px; font-weight:bold; line-height:1; margin-top:5px; }
+  .plan-window-track { height:10px; margin-top:8px; background:rgba(255,255,255,0.05); border-radius:999px; overflow:hidden; }
+  .plan-window-fill { height:100%; border-radius:999px; transition:width 0.8s ease; position:relative; }
+  .plan-window-fill::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(255,255,255,0.18), transparent 70%); }
+  .plan-window-foot { display:flex; justify-content:space-between; gap:8px; margin-top:7px; font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:0.8px; }
 
   /* ── Agent Face ──────────────────────────────────── */
   .agent-face-wrap { width:78px; display:flex; flex-direction:column; flex-shrink:0; align-items:center; justify-content:center; gap:2px; }
@@ -191,58 +205,89 @@
     </div>
   </div>
 
-  <!-- Resources Card -->
-  <div class="card">
-    <div class="res-body">
-      <div class="res-row">
-        <span class="res-lbl-left">RAM</span>
-        <div class="res-track"><div class="res-fill" id="ram-bar" style="width:0%;background:var(--green)"></div></div>
-        <span class="res-pct" id="ram-val" style="color:var(--green)">--%</span>
-        <span class="res-detail" id="ram-detail">-- / --</span>
-      </div>
-      <div class="res-row">
-        <span class="res-lbl-left">DISK</span>
-        <div class="res-track"><div class="res-fill" id="disk-bar" style="width:0%;background:var(--green)"></div></div>
-        <span class="res-pct" id="disk-val" style="color:var(--green)">--%</span>
-        <span class="res-detail" id="disk-detail">-- / --</span>
+  <!-- OpenAI Plan Card -->
+  <div class="card" id="plan-card">
+    <div class="plan-widget">
+      <div class="plan-left">
+        <div class="plan-header">
+          <div class="plan-heading">
+            <div class="plan-icon">◎</div>
+            <div class="plan-titleblock">
+              <span class="plan-hero-amount" id="plan-type" style="color:var(--green)">--</span>
+              <span class="plan-hero-label" id="plan-subtitle">Codex plan usage</span>
+            </div>
+          </div>
+          <span class="plan-badge ok" id="plan-status-label">--</span>
+        </div>
+        <div class="plan-windows">
+          <div class="plan-window primary">
+            <div class="plan-window-top">
+              <div>
+                <div class="plan-window-label">Rolling 5h</div>
+                <div class="plan-window-pct" id="plan-primary-used" style="color:var(--cyan)">--%</div>
+              </div>
+              <div class="plan-window-reset" id="plan-primary-reset">resets --</div>
+            </div>
+            <div class="plan-window-track">
+              <div class="plan-window-fill" id="plan-primary-bar" style="width:0%;background:linear-gradient(90deg,var(--cyan),var(--accent))"></div>
+            </div>
+            <div class="plan-window-foot">
+              <span>Window</span>
+              <span id="plan-primary-window">--</span>
+            </div>
+          </div>
+          <div class="plan-window secondary">
+            <div class="plan-window-top">
+              <div>
+                <div class="plan-window-label">Weekly</div>
+                <div class="plan-window-pct" id="plan-secondary-used" style="color:var(--accent)">--%</div>
+              </div>
+              <div class="plan-window-reset" id="plan-secondary-reset">resets --</div>
+            </div>
+            <div class="plan-window-track">
+              <div class="plan-window-fill" id="plan-secondary-bar" style="width:0%;background:linear-gradient(90deg,var(--accent),var(--purple))"></div>
+            </div>
+            <div class="plan-window-foot">
+              <span>Window</span>
+              <span id="plan-secondary-window">--</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
 </div>
 
-<!-- MIDDLE ROW: OpenRouter + Network -->
+<!-- MIDDLE ROW: Resources + Network -->
 <div class="mid-row">
 
-  <!-- OpenRouter Card -->
+  <!-- Resources Card -->
   <div class="card">
-    <div class="or-widget">
-      <div class="or-left">
-        <div class="or-hero">
-          <span style="font-size:14px;">💰</span>
-          <span class="or-hero-amount" id="or-total" style="color:var(--green)">$--</span>
-          <span class="or-hero-label">spent</span>
-          <span class="or-hero-limit" id="or-limit-label">/ $--</span>
+    <div class="res-body">
+      <div class="res-section">
+        <div class="res-row">
+          <span class="res-lbl-left">RAM</span>
+          <div class="res-track"><div class="res-fill" id="ram-bar" style="width:0%;background:var(--green)"></div></div>
+          <span class="res-pct" id="ram-val" style="color:var(--green)">--%</span>
+          <span class="res-detail" id="ram-detail">-- / --</span>
         </div>
-        <div class="or-budget-row">
-          <div class="or-budget-track">
-            <div class="or-budget-fill" id="or-bar" style="width:0%;background:var(--green)"></div>
-          </div>
-          <span class="or-budget-pct" id="or-pct" style="color:var(--green)">0%</span>
+        <div class="res-sub">
+          <span>Free: <b id="ram-free">--</b></span>
+          <span>Swap: <b id="swap-used-val">--</b></span>
         </div>
-        <div class="or-stats">
-          <div class="or-stat">
-            <span class="or-stat-label">Today</span>
-            <span class="or-stat-value" id="or-daily" style="color:var(--cyan)">$--</span>
-          </div>
-          <div class="or-stat">
-            <span class="or-stat-label">Week</span>
-            <span class="or-stat-value" id="or-weekly" style="color:var(--accent)">$--</span>
-          </div>
-          <div class="or-stat">
-            <span class="or-stat-label">Left</span>
-            <span class="or-stat-value" id="or-remain" style="color:var(--green)">$--</span>
-          </div>
+      </div>
+      <div class="res-section">
+        <div class="res-row">
+          <span class="res-lbl-left">DISK</span>
+          <div class="res-track"><div class="res-fill" id="disk-bar" style="width:0%;background:var(--green)"></div></div>
+          <span class="res-pct" id="disk-val" style="color:var(--green)">--%</span>
+          <span class="res-detail" id="disk-detail">-- / --</span>
+        </div>
+        <div class="res-sub">
+          <span>Free: <b id="disk-free">--</b></span>
+          <span>R: <b id="disk-rd">--</b></span>
+          <span>W: <b id="disk-wt">--</b></span>
         </div>
       </div>
     </div>
@@ -339,7 +384,27 @@ function formatUptime(s) {
   var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);
   return d>0?d+'d '+h+'h':h+'h '+m+'m';
 }
+function formatCountdown(s) {
+  s = Math.max(0, Math.floor(s || 0));
+  var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);
+  if(d > 0) return d+'d '+h+'h';
+  if(h > 0) return h+'h '+m+'m';
+  return m+'m';
+}
+function formatWindowLabel(s) {
+  s = Math.max(0, Math.floor(s || 0));
+  var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600);
+  if(d > 0) return d+'d';
+  return h+'h';
+}
 function pad(n){return n<10?'0'+n:''+n;}
+function formatModelLabel(info){
+  if(!info) return '';
+  var model = info.model || '';
+  var provider = info.provider || '';
+  if(provider && model) return provider+' • '+model;
+  return model || provider || '';
+}
 
 function updateClock(){
   var n=new Date();
@@ -381,13 +446,19 @@ async function fetchMetrics(){
     document.getElementById('ram-val').style.color = color(mp);
     document.getElementById('ram-detail').textContent = d.memory.used.toFixed(0)+' MB / '+d.memory.total.toFixed(0)+' MB';
     var rb=document.getElementById('ram-bar'); rb.style.width=mp+'%'; rb.style.background=color(mp);
+    document.getElementById('ram-free').textContent = (d.memory.total-d.memory.used).toFixed(0)+' MB';
+    var swapTxt = d.swap && d.swap.total>0 ? d.swap.used.toFixed(0)+' / '+d.swap.total.toFixed(0)+' MB' : 'none';
+    document.getElementById('swap-used-val').textContent = swapTxt;
 
     var dp = d.disk.used/d.disk.total*100;
     document.getElementById('disk-val').textContent = dp.toFixed(0)+'%';
     document.getElementById('disk-val').style.color = color(dp);
     document.getElementById('disk-detail').textContent = d.disk.used.toFixed(1)+' GB / '+d.disk.total.toFixed(1)+' GB';
     var db=document.getElementById('disk-bar'); db.style.width=dp+'%'; db.style.background=color(dp);
-
+    document.getElementById('disk-free').textContent = (d.disk.total-d.disk.used).toFixed(1)+' GB';
+    var drd=formatSpeed(d.diskRd||0), dwt=formatSpeed(d.diskWt||0);
+    document.getElementById('disk-rd').textContent = drd.v+drd.u;
+    document.getElementById('disk-wt').textContent = dwt.v+dwt.u;
     // ── Network ──────────────────────────────────────
     var dl=formatSpeed(d.netRx||0), ul=formatSpeed(d.netTx||0);
     document.getElementById('net-down-speed').textContent = dl.v;
@@ -395,25 +466,39 @@ async function fetchMetrics(){
     document.getElementById('net-up-speed').textContent   = ul.v;
     document.getElementById('net-up-unit').textContent    = ul.u;
 
-    // ── OpenRouter ───────────────────────────────────
-    if(d.or && d.or.data){
-      var o = d.or.data;
-      var opct = Math.min((o.usage_monthly/o.limit)*100, 100);
-      var oc = color(opct);
-      document.getElementById('or-total').textContent = '$'+o.usage_monthly.toFixed(2);
-      document.getElementById('or-total').style.color = oc;
-      document.getElementById('or-limit-label').textContent = '/ $'+o.limit.toFixed(0);
-      document.getElementById('or-daily').textContent  = '$'+o.usage_daily.toFixed(2);
-      document.getElementById('or-weekly').textContent = '$'+o.usage_weekly.toFixed(2);
-      var rem = o.limit - o.usage_monthly;
-      document.getElementById('or-remain').textContent = '$'+rem.toFixed(2);
-      document.getElementById('or-remain').style.color = rem < o.limit*0.2 ? 'var(--red)' : rem < o.limit*0.5 ? 'var(--orange)' : 'var(--green)';
-      var orb=document.getElementById('or-bar');
-      orb.style.width=opct+'%';
-      orb.style.background='linear-gradient(90deg,var(--cyan),'+oc+')';
-      document.getElementById('or-pct').textContent = opct.toFixed(0)+'%';
-      document.getElementById('or-pct').style.color = oc;
-
+    // ── OpenAI Plan ──────────────────────────────────
+    var modelInfo = d.model_info || {model:d.hermes_model||'', provider:''};
+    var provider = (modelInfo.provider || '').toLowerCase();
+    var planCard = document.getElementById('plan-card');
+    if(planCard) planCard.style.display = provider === 'openai' ? '' : 'none';
+    if(provider === 'openai' && d.openai_plan){
+      var plan = d.openai_plan;
+      var p5 = plan.primary_window || {};
+      var pw = plan.secondary_window || {};
+      var used5h = Math.min(p5.used_percent || 0, 100);
+      var usedWeek = Math.min(pw.used_percent || 0, 100);
+      var pc = color(used5h);
+      var wc = color(usedWeek);
+      document.getElementById('plan-type').textContent = (plan.plan_type || '--').toUpperCase();
+      document.getElementById('plan-type').style.color = pc;
+      document.getElementById('plan-subtitle').textContent = 'Codex plan usage';
+      var badge = document.getElementById('plan-status-label');
+      badge.textContent = plan.limit_reached ? 'limit reached' : (plan.allowed ? 'live' : 'blocked');
+      badge.className = 'plan-badge ' + (plan.limit_reached ? 'hit' : (plan.allowed ? 'ok' : 'warn'));
+      document.getElementById('plan-primary-used').textContent = used5h.toFixed(0)+'%';
+      document.getElementById('plan-primary-used').style.color = pc;
+      document.getElementById('plan-secondary-used').textContent = usedWeek.toFixed(0)+'%';
+      document.getElementById('plan-secondary-used').style.color = wc;
+      document.getElementById('plan-primary-reset').textContent = 'resets ' + formatCountdown(p5.reset_after_seconds || 0);
+      document.getElementById('plan-secondary-reset').textContent = 'resets ' + formatCountdown(pw.reset_after_seconds || 0);
+      document.getElementById('plan-primary-window').textContent = formatWindowLabel(p5.limit_window_seconds || 0);
+      document.getElementById('plan-secondary-window').textContent = formatWindowLabel(pw.limit_window_seconds || 0);
+      var p5b=document.getElementById('plan-primary-bar');
+      p5b.style.width=used5h+'%';
+      p5b.style.background='linear-gradient(90deg,var(--cyan),'+pc+')';
+      var pwb=document.getElementById('plan-secondary-bar');
+      pwb.style.width=usedWeek+'%';
+      pwb.style.background='linear-gradient(90deg,var(--accent),'+wc+')';
     }
 
     // ── Cron jobs ────────────────────────────────────
@@ -458,7 +543,13 @@ async function fetchMetrics(){
     }
 
     // ── Model + status ───────────────────────────────
-    if(d.hermes_model) document.getElementById('model-tag').textContent='🤖 '+d.hermes_model;
+    var modelInfo = d.model_info || {model:d.hermes_model||'', provider:''};
+    var modelLabel = formatModelLabel(modelInfo);
+    if(modelLabel){
+      var modelTag = document.getElementById('model-tag');
+      modelTag.textContent = '🤖 '+modelLabel;
+      modelTag.title = modelInfo.provider ? (modelInfo.provider+' / '+modelInfo.model) : modelInfo.model;
+    }
     document.getElementById('live-dot').className='dot on pulse';
     document.getElementById('status-text').textContent='LIVE';
 

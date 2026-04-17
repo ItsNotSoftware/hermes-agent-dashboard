@@ -1,33 +1,24 @@
 #!/usr/bin/env python3
-"""RPi Dashboard backend - serves system metrics and OpenRouter usage data."""
+"""RPi Dashboard backend - serves system metrics and OpenAI plan usage data."""
 
+import base64
 import json
 import os
 import subprocess
 import time
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 
 PORT = 9200
 DASHBOARD_DIR = Path(__file__).parent
 
-# Get OpenRouter API key
-ENV_PATH = Path.home() / '.hermes' / '.env'
-API_KEY = ''
-try:
-    for line in ENV_PATH.read_text().splitlines():
-        if line.startswith('OPENROUTER_API_KEY=') and not line.strip().startswith('#'):
-            API_KEY = line.split('=', 1)[1].strip().strip("'\"")
-            break
-except Exception:
-    pass
-
 # Read cron jobs
 JOBS_PATH = Path.home() / '.hermes' / 'cron' / 'jobs.json'
+AUTH_PATH = Path.home() / '.hermes' / 'auth.json'
 
-# Cache OpenRouter data
-or_cache = {'data': None, 'ts': 0, 'daily_history': []}
+# Cache OpenAI plan usage data
+plan_cache = {'data': None, 'ts': 0}
 
 
 def get_temp():
@@ -210,38 +201,125 @@ def get_disk_io():
 def get_top_procs(n=10):
     try:
         result = subprocess.run(['ps', 'aux', '--sort=-%cpu'], capture_output=True, text=True, timeout=5)
-        lines = result.stdout.strip().splitlines()[1:n+1]
+        lines = result.stdout.strip().splitlines()[1:]
         procs = []
+        hidden_exes = {'chromium', 'headless_shell'}
         for line in lines:
             parts = line.split(None, 10)
             if len(parts) >= 11:
                 cmd = parts[10]
                 # Strip path from executable, keep args
                 tokens = cmd.split(None, 1)
-                exe = tokens[0].split('/')[-1]
+                exe = tokens[0].split('/')[-1].lower()
                 args = tokens[1] if len(tokens) > 1 else ''
-                name = (exe + ' ' + args).strip()[:45]
+                if exe in hidden_exes or 'chromium' in cmd.lower() or 'headless_shell' in cmd.lower():
+                    continue
+                name = (tokens[0].split('/')[-1] + ' ' + args).strip()[:45]
                 cpu = float(parts[2])
                 mem = float(parts[3])
                 pid = parts[1]
                 user = parts[0][:8]
                 procs.append({'name': name, 'cpu': cpu, 'mem': mem, 'pid': pid, 'user': user})
+                if len(procs) >= n:
+                    break
         return procs
     except Exception:
         return []
 
 
-def get_hermes_model():
+def _read_hermes_model_config():
+    """Read the top-level model config from ~/.hermes/config.yaml."""
+    config_path = Path.home() / '.hermes' / 'config.yaml'
+    model = ''
+    provider = ''
+    base_url = ''
     try:
-        config_path = Path.home() / '.hermes' / 'config.yaml'
-        for line in config_path.read_text().splitlines():
-            line = line.strip()
-            if line.startswith('default:'):
-                model = line.split(':', 1)[1].strip()
-                return model.split('/')[-1] if '/' in model else model
+        lines = config_path.read_text().splitlines()
     except Exception:
-        pass
+        return {'model': '', 'provider': '', 'base_url': ''}
+
+    in_model_section = False
+    for raw in lines:
+        line = raw.rstrip()
+        stripped = line.strip()
+        if not stripped or stripped.startswith('#'):
+            continue
+
+        indent = len(line) - len(line.lstrip(' '))
+        if indent == 0:
+            if stripped == 'model:':
+                in_model_section = True
+                continue
+            if in_model_section:
+                break
+            continue
+
+        if not in_model_section or indent < 2:
+            continue
+
+        key, _, value = stripped.partition(':')
+        value = value.strip().strip("'\"")
+        if key == 'default':
+            model = value
+        elif key == 'provider':
+            provider = value
+        elif key == 'base_url':
+            base_url = value
+
+    return {'model': model, 'provider': provider, 'base_url': base_url}
+
+
+def _infer_model_provider(model, provider='', base_url=''):
+    """Return a display label for the model provider."""
+    provider_l = (provider or '').strip().lower()
+    model_l = (model or '').strip().lower()
+    base_url_l = (base_url or '').strip().lower()
+
+    # Respect an explicit provider when present.
+    if provider_l in {'openai', 'openai-codex', 'codex'}:
+        return 'OpenAI'
+    if provider_l == 'openrouter':
+        return 'OpenRouter'
+    if provider_l == 'anthropic':
+        return 'Anthropic'
+    if provider_l == 'google':
+        return 'Google'
+    if provider_l == 'local':
+        return 'Local'
+    if provider_l == 'edge':
+        return 'Edge'
+    if provider_l and provider_l != 'auto':
+        return provider.title()
+
+    # Fall back to config hints / model naming.
+    if 'chatgpt.com/backend-api/codex' in base_url_l or model_l.startswith('gpt-') or model_l.startswith('o1') or model_l.startswith('o3'):
+        return 'OpenAI'
+    if model_l.startswith('openrouter/'):
+        return 'OpenRouter'
+    if model_l.startswith('anthropic/') or 'claude' in model_l:
+        return 'Anthropic'
+    if model_l.startswith('google/') or 'gemini' in model_l:
+        return 'Google'
+    if model_l.startswith('local/'):
+        return 'Local'
+
     return ''
+
+
+def get_hermes_model_info():
+    try:
+        cfg = _read_hermes_model_config()
+        model = cfg.get('model', '')
+        if '/' in model:
+            model = model.split('/')[-1]
+        provider = _infer_model_provider(cfg.get('model', ''), cfg.get('provider', ''), cfg.get('base_url', ''))
+        return {'model': model, 'provider': provider}
+    except Exception:
+        return {'model': '', 'provider': ''}
+
+
+def get_hermes_model():
+    return get_hermes_model_info().get('model', '')
 
 
 def get_cron_jobs():
@@ -307,69 +385,162 @@ def get_cron_jobs():
         return []
 
 
-def fetch_openrouter():
-    global or_cache
-    now = time.time()
-    
-    # Cache for 60 seconds
-    if or_cache['data'] and (now - or_cache['ts']) < 60:
-        return or_cache['data'], or_cache['daily_history']
-    
-    if not API_KEY:
-        return None, []
-    
-    import urllib.request
+def _decode_jwt_payload(token):
     try:
+        payload = token.split('.')[1]
+        payload += '=' * (-len(payload) % 4)
+        return json.loads(base64.urlsafe_b64decode(payload))
+    except Exception:
+        return {}
+
+
+def _load_openai_codex_state():
+    try:
+        auth_data = json.loads(AUTH_PATH.read_text())
+        state = auth_data.get('providers', {}).get('openai-codex', {})
+        tokens = state.get('tokens', {})
+        access_token = str(tokens.get('access_token', '')).strip()
+        refresh_token = str(tokens.get('refresh_token', '')).strip()
+        if not access_token or not refresh_token:
+            return None
+        return {
+            'auth_data': auth_data,
+            'state': state,
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+        }
+    except Exception:
+        return None
+
+
+def _save_openai_codex_tokens(auth_data, access_token, refresh_token):
+    try:
+        state = auth_data.setdefault('providers', {}).setdefault('openai-codex', {})
+        tokens = state.setdefault('tokens', {})
+        tokens['access_token'] = access_token
+        tokens['refresh_token'] = refresh_token
+        state['last_refresh'] = datetime.utcnow().isoformat() + 'Z'
+        AUTH_PATH.write_text(json.dumps(auth_data, indent=2))
+        os.chmod(AUTH_PATH, 0o600)
+    except Exception as exc:
+        print(f"OpenAI token save error: {exc}")
+
+
+def _token_expiring(access_token, skew_seconds=120):
+    claims = _decode_jwt_payload(access_token)
+    exp = claims.get('exp')
+    if not isinstance(exp, (int, float)):
+        return False
+    return time.time() >= (float(exp) - skew_seconds)
+
+
+def _refresh_openai_codex_tokens(auth_state):
+    import urllib.parse
+    import urllib.request
+
+    data = urllib.parse.urlencode({
+        'grant_type': 'refresh_token',
+        'refresh_token': auth_state['refresh_token'],
+        'client_id': 'app_EMoamEEZ73f0CkXaXp7hrann',
+    }).encode()
+    req = urllib.request.Request(
+        'https://auth.openai.com/oauth/token',
+        data=data,
+        headers={'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json'},
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        payload = json.loads(resp.read())
+    access_token = str(payload.get('access_token', '')).strip()
+    refresh_token = str(payload.get('refresh_token', '')).strip() or auth_state['refresh_token']
+    if not access_token:
+        raise RuntimeError('Refresh did not return access_token')
+    _save_openai_codex_tokens(auth_state['auth_data'], access_token, refresh_token)
+    auth_state['access_token'] = access_token
+    auth_state['refresh_token'] = refresh_token
+    return access_token
+
+
+def _get_openai_codex_access_token():
+    auth_state = _load_openai_codex_state()
+    if not auth_state:
+        return None
+    if _token_expiring(auth_state['access_token']):
+        try:
+            _refresh_openai_codex_tokens(auth_state)
+        except Exception as exc:
+            print(f"OpenAI token refresh error: {exc}")
+    return auth_state
+
+
+def _normalize_plan_usage(data):
+    rate_limit = data.get('rate_limit') or {}
+    primary = rate_limit.get('primary_window') or {}
+    secondary = rate_limit.get('secondary_window') or {}
+    return {
+        'plan_type': str(data.get('plan_type', '')).strip() or 'unknown',
+        'allowed': bool(rate_limit.get('allowed', False)),
+        'limit_reached': bool(rate_limit.get('limit_reached', False)),
+        'primary_window': {
+            'used_percent': float(primary.get('used_percent', 0) or 0),
+            'limit_window_seconds': int(primary.get('limit_window_seconds', 0) or 0),
+            'reset_after_seconds': int(primary.get('reset_after_seconds', 0) or 0),
+            'reset_at': int(primary.get('reset_at', 0) or 0),
+        },
+        'secondary_window': {
+            'used_percent': float(secondary.get('used_percent', 0) or 0),
+            'limit_window_seconds': int(secondary.get('limit_window_seconds', 0) or 0),
+            'reset_after_seconds': int(secondary.get('reset_after_seconds', 0) or 0),
+            'reset_at': int(secondary.get('reset_at', 0) or 0),
+        },
+        'code_review_rate_limit': data.get('code_review_rate_limit'),
+        'credits': data.get('credits') or {},
+    }
+
+
+def fetch_openai_plan_usage():
+    global plan_cache
+    now = time.time()
+
+    if plan_cache['data'] and (now - plan_cache['ts']) < 30:
+        return plan_cache['data']
+
+    auth_state = _get_openai_codex_access_token()
+    if not auth_state:
+        return None
+
+    def _request_usage(access_token):
         req = urllib.request.Request(
-            'https://openrouter.ai/api/v1/auth/key',
-            headers={'Authorization': f'Bearer {API_KEY}'}
+            'https://chatgpt.com/backend-api/wham/usage',
+            headers={
+                'Authorization': f"Bearer {access_token}",
+                'Accept': 'application/json',
+            }
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read())
-        
-        result_data = data.get('data', {})
-        
-        # Try daily usage endpoint first, fall back gracefully
-        daily_history = []
-        try:
-            today = datetime.now()
-            for i in range(7, 0, -1):
-                d = today - timedelta(days=i)
-                date_str = d.strftime('%Y-%m-%d')
-                url = f'https://openrouter.ai/api/v1/usage/date-statistics?start={date_str}&end={date_str}'
-                req2 = urllib.request.Request(url, headers={'Authorization': f'Bearer {API_KEY}'})
-                resp2 = urllib.request.urlopen(req2, timeout=10)
-                raw = resp2.read()
-                # Check if it's JSON (not HTML 404)
-                try:
-                    usage_data = json.loads(raw)
-                    total_cost = 0
-                    if 'data' in usage_data and 'models' in usage_data['data']:
-                        for model in usage_data['data']['models']:
-                            total_cost += model.get('total_cost', 0)
-                    daily_history.append({
-                        'label': d.strftime('%a'),
-                        'val': round(total_cost, 4),
-                    })
-                except json.JSONDecodeError:
-                    # Endpoint returned HTML (404), use zero
-                    daily_history.append({'label': d.strftime('%a'), 'val': 0})
-        except Exception:
-            # Endpoint failed entirely, create zeros from auth/key daily
-            daily = result_data.get('usage_daily', 0)
-            daily_history = [{'label': d.strftime('%a'), 'val': 0}
-                           for d in [datetime.now() - timedelta(days=i) for i in range(7, 0, -1)]]
-            # Set today as the last entry
-            daily_history[-1]['val'] = round(daily, 4)
-        
-        or_cache['data'] = result_data
-        or_cache['daily_history'] = daily_history
-        or_cache['ts'] = now
-        
-        return result_data, daily_history
+            return json.loads(resp.read())
+
+    import urllib.request
+    import urllib.error
+    try:
+        data = _request_usage(auth_state['access_token'])
+        plan_cache['data'] = _normalize_plan_usage(data)
+        plan_cache['ts'] = now
+        return plan_cache['data']
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            try:
+                fresh_token = _refresh_openai_codex_tokens(auth_state)
+                data = _request_usage(fresh_token)
+                plan_cache['data'] = _normalize_plan_usage(data)
+                plan_cache['ts'] = now
+                return plan_cache['data']
+            except Exception as retry_exc:
+                print(f"OpenAI plan retry error: {retry_exc}")
+        print(f"OpenAI plan fetch error: {e}")
+        return plan_cache['data']
     except Exception as e:
-        print(f"OpenRouter fetch error: {e}")
-        return or_cache['data'], or_cache.get('daily_history', [])
+        print(f"OpenAI plan fetch error: {e}")
+        return plan_cache['data']
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -398,13 +569,20 @@ class Handler(SimpleHTTPRequestHandler):
             import subprocess as _sp
             _sp.Popen(['pkill', '-f', 'chromium.*9200'], stdout=_sp.DEVNULL, stderr=_sp.DEVNULL)
             return
+        if self.path == '/api/model/info':
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps(get_hermes_model_info()).encode())
+            return
         if self.path == '/api/status':
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             
-            or_data, daily_hist = fetch_openrouter()
+            plan_data = fetch_openai_plan_usage()
             net = get_network()
             disk_io = get_disk_io()
             memory, swap = get_memory_and_swap()
@@ -430,8 +608,10 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception:
                 pass
             
+            model_info = get_hermes_model_info()
             status = {
-                'hermes_model': get_hermes_model(),
+                'hermes_model': model_info.get('model', ''),
+                'model_info': model_info,
                 'temp': get_temp(),
                 'cpu': get_cpu_usage(),  # {'total': %, 'max_core': %}
                 'memory': memory,
@@ -443,17 +623,15 @@ class Handler(SimpleHTTPRequestHandler):
                 'netTx': net['tx'],
                 'diskRd': disk_io.get('rd', 0),
                 'diskWt': disk_io.get('wt', 0),
-                'procs': get_top_procs(5),
+                # Show a couple more top processes in the dashboard widget.
+                'procs': get_top_procs(7),
                 'crons': get_cron_jobs(),
                 'hostname': hostname,
                 'kernel': kernel,
                 'python': python_ver,
                 'proc_count': proc_count,
                 'threads': threads,
-                'or': {
-                    'data': or_data,
-                    'daily_history': daily_hist,
-                } if or_data else None,
+                'openai_plan': plan_data,
             }
             
             self.wfile.write(json.dumps(status).encode())
