@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""RPi Dashboard backend - serves system metrics and OpenAI plan usage data."""
+"""RPi Dashboard backend - serves system metrics plus OpenAI and Claude usage data."""
 
 import base64
 import json
@@ -17,8 +17,119 @@ DASHBOARD_DIR = Path(__file__).parent
 JOBS_PATH = Path.home() / '.hermes' / 'cron' / 'jobs.json'
 AUTH_PATH = Path.home() / '.hermes' / 'auth.json'
 
-# Cache OpenAI plan usage data
+# Cache provider usage data
 plan_cache = {'data': None, 'ts': 0}
+claude_cache = {'data': None, 'ts': 0}
+
+
+def _parse_iso_timestamp(value):
+    try:
+        return datetime.fromisoformat(str(value).replace('Z', '+00:00')).timestamp()
+    except Exception:
+        return None
+
+
+def _claude_project_dir(project_path):
+    if not project_path:
+        return None
+    normalized = str(project_path).strip()
+    if not normalized:
+        return None
+    slug = normalized.replace('/', '-')
+    return Path.home() / '.claude' / 'projects' / slug
+
+
+def _empty_usage_totals():
+    return {
+        'input_tokens': 0,
+        'output_tokens': 0,
+        'cache_read_tokens': 0,
+        'cache_creation_tokens': 0,
+        'web_search_requests': 0,
+        'total_tokens': 0,
+        'messages': 0,
+        'oldest_ts': None,
+        'newest_ts': None,
+    }
+
+
+def _merge_usage_totals(dest, src):
+    dest['input_tokens'] += src['input_tokens']
+    dest['output_tokens'] += src['output_tokens']
+    dest['cache_read_tokens'] += src['cache_read_tokens']
+    dest['cache_creation_tokens'] += src['cache_creation_tokens']
+    dest['web_search_requests'] += src['web_search_requests']
+    dest['total_tokens'] += src['total_tokens']
+    dest['messages'] += src['messages']
+
+
+def _track_usage_window_bounds(window, ts):
+    oldest_ts = window.get('oldest_ts')
+    newest_ts = window.get('newest_ts')
+    if oldest_ts is None or ts < oldest_ts:
+        window['oldest_ts'] = ts
+    if newest_ts is None or ts > newest_ts:
+        window['newest_ts'] = ts
+
+
+def _usage_from_message(message_usage):
+    input_tokens = int(message_usage.get('input_tokens', 0) or 0)
+    output_tokens = int(message_usage.get('output_tokens', 0) or 0)
+    cache_read_tokens = int(message_usage.get('cache_read_input_tokens', 0) or 0)
+    cache_creation_tokens = int(message_usage.get('cache_creation_input_tokens', 0) or 0)
+    server_tool_use = message_usage.get('server_tool_use') or {}
+    web_search_requests = int(server_tool_use.get('web_search_requests', 0) or 0)
+    return {
+        'input_tokens': input_tokens,
+        'output_tokens': output_tokens,
+        'cache_read_tokens': cache_read_tokens,
+        'cache_creation_tokens': cache_creation_tokens,
+        'web_search_requests': web_search_requests,
+        'total_tokens': input_tokens + output_tokens + cache_read_tokens + cache_creation_tokens,
+        'messages': 1,
+    }
+
+
+def _collect_claude_usage_windows(project_path, now_ts):
+    windows = {
+        'five_hour_window': _empty_usage_totals(),
+        'one_week_window': _empty_usage_totals(),
+    }
+    project_dir = _claude_project_dir(project_path)
+    if not project_dir or not project_dir.exists():
+        return windows
+
+    five_hour_cutoff = now_ts - (5 * 60 * 60)
+    one_week_cutoff = now_ts - (7 * 24 * 60 * 60)
+
+    try:
+        for session_file in project_dir.glob('*.jsonl'):
+            try:
+                with session_file.open() as fh:
+                    for line in fh:
+                        try:
+                            entry = json.loads(line)
+                        except Exception:
+                            continue
+                        ts = _parse_iso_timestamp(entry.get('timestamp'))
+                        if ts is None or ts < one_week_cutoff:
+                            continue
+                        message = entry.get('message') or {}
+                        usage = message.get('usage') if isinstance(message, dict) else None
+                        if not isinstance(usage, dict):
+                            continue
+                        totals = _usage_from_message(usage)
+                        _merge_usage_totals(windows['one_week_window'], totals)
+                        _track_usage_window_bounds(windows['one_week_window'], ts)
+                        if ts >= five_hour_cutoff:
+                            _merge_usage_totals(windows['five_hour_window'], totals)
+                            _track_usage_window_bounds(windows['five_hour_window'], ts)
+            except Exception:
+                continue
+    except Exception:
+        return windows
+
+    return windows
 
 
 def get_temp():
@@ -472,6 +583,170 @@ def _get_openai_codex_access_token():
     return auth_state
 
 
+CLAUDE_CREDENTIALS_PATH = Path.home() / '.claude' / '.credentials.json'
+CLAUDE_OAUTH_CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e'
+CLAUDE_OAUTH_SCOPE = 'user:profile user:inference user:sessions:claude_code user:mcp_servers'
+
+
+def _load_claude_oauth_state():
+    try:
+        auth_data = json.loads(CLAUDE_CREDENTIALS_PATH.read_text())
+        state = auth_data.get('claudeAiOauth', {})
+        access_token = str(state.get('accessToken', '')).strip()
+        refresh_token = str(state.get('refreshToken', '')).strip()
+        if not access_token or not refresh_token:
+            return None
+        return {
+            'auth_data': auth_data,
+            'state': state,
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'expires_at': int(state.get('expiresAt', 0) or 0),
+            'subscription_type': str(state.get('subscriptionType', '')).strip() or 'unknown',
+            'rate_limit_tier': str(state.get('rateLimitTier', '')).strip(),
+        }
+    except Exception:
+        return None
+
+
+def _save_claude_oauth_tokens(auth_data, access_token, refresh_token, expires_at=None):
+    try:
+        state = auth_data.setdefault('claudeAiOauth', {})
+        state['accessToken'] = access_token
+        state['refreshToken'] = refresh_token
+        if expires_at is not None:
+            state['expiresAt'] = int(expires_at)
+        CLAUDE_CREDENTIALS_PATH.write_text(json.dumps(auth_data, indent=2))
+        os.chmod(CLAUDE_CREDENTIALS_PATH, 0o600)
+    except Exception as exc:
+        print(f"Claude token save error: {exc}")
+
+
+def _refresh_claude_oauth_tokens(auth_state):
+    try:
+        from curl_cffi import requests as curl_requests
+
+        resp = curl_requests.post(
+            'https://platform.claude.com/v1/oauth/token',
+            impersonate='chrome124',
+            headers={'Content-Type': 'application/json', 'Accept': 'application/json'},
+            json={
+                'grant_type': 'refresh_token',
+                'refresh_token': auth_state['refresh_token'],
+                'client_id': CLAUDE_OAUTH_CLIENT_ID,
+                'scope': CLAUDE_OAUTH_SCOPE,
+            },
+            timeout=30,
+        )
+        if resp.status_code >= 400:
+            raise RuntimeError(f'Claude refresh HTTP {resp.status_code}: {resp.text[:200]}')
+        payload = resp.json()
+    except Exception as exc:
+        raise RuntimeError(f'Claude refresh failed: {exc}') from exc
+
+    access_token = str(payload.get('access_token', '')).strip()
+    refresh_token = str(payload.get('refresh_token', '')).strip() or auth_state['refresh_token']
+    expires_in = int(payload.get('expires_in', 0) or 0)
+    if not access_token:
+        raise RuntimeError('Refresh did not return access_token')
+    expires_at = int(time.time() * 1000) + (expires_in * 1000) if expires_in else None
+    _save_claude_oauth_tokens(auth_state['auth_data'], access_token, refresh_token, expires_at=expires_at)
+    auth_state['access_token'] = access_token
+    auth_state['refresh_token'] = refresh_token
+    auth_state['expires_at'] = expires_at or auth_state.get('expires_at', 0)
+    return auth_state
+
+
+def _get_claude_oauth_access_token():
+    auth_state = _load_claude_oauth_state()
+    if not auth_state:
+        return None
+    if auth_state.get('expires_at') and time.time() * 1000 >= (auth_state['expires_at'] - 300000):
+        try:
+            _refresh_claude_oauth_tokens(auth_state)
+        except Exception as exc:
+            print(f"Claude token refresh error: {exc}")
+    return auth_state
+
+
+def _claude_request_json(url, access_token):
+    try:
+        from curl_cffi import requests as curl_requests
+
+        resp = curl_requests.get(
+            url,
+            impersonate='chrome124',
+            headers={
+                'Authorization': f'Bearer {access_token}',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'anthropic-beta': 'oauth-2025-04-20',
+            },
+            timeout=30,
+        )
+        return resp.status_code, resp.text
+    except Exception:
+        import urllib.request
+        import urllib.error
+
+        req = urllib.request.Request(
+            url,
+            headers={
+                'Authorization': f'Bearer {access_token}',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'anthropic-beta': 'oauth-2025-04-20',
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return resp.status, resp.read().decode()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read().decode()
+
+
+def _claude_reset_after_seconds(reset_at_value, now_ts):
+    try:
+        if isinstance(reset_at_value, (int, float)):
+            reset_at = float(reset_at_value)
+            if reset_at > 10_000_000_000:
+                reset_at /= 1000.0
+            return max(0, int(reset_at - now_ts))
+        if isinstance(reset_at_value, str) and reset_at_value:
+            ts = _parse_iso_timestamp(reset_at_value)
+            return max(0, int(ts - now_ts)) if ts is not None else 0
+    except Exception:
+        pass
+    return 0
+
+
+def _normalize_claude_usage(data, now_ts):
+    five_hour = data.get('five_hour') or {}
+    seven_day = data.get('seven_day') or {}
+    seven_day_opus = data.get('seven_day_opus') or {}
+    seven_day_omelette = data.get('seven_day_omelette') or {}
+    extra_usage = data.get('extra_usage') or {}
+
+    def window(src, window_seconds):
+        used = float(src.get('utilization', 0) or 0)
+        return {
+            'used_percent': used,
+            'limit_window_seconds': window_seconds,
+            'reset_after_seconds': _claude_reset_after_seconds(src.get('resets_at'), now_ts),
+            'reset_at': _parse_iso_timestamp(src.get('resets_at')),
+        }
+
+    return {
+        'subscription_type': data.get('subscription_type') or 'unknown',
+        'usage_source': 'api',
+        'five_hour_window': window(five_hour, 5 * 60 * 60),
+        'one_week_window': window(seven_day, 7 * 24 * 60 * 60),
+        'opus_week_window': window(seven_day_opus, 7 * 24 * 60 * 60) if seven_day_opus else None,
+        'omelette_week_window': window(seven_day_omelette, 7 * 24 * 60 * 60) if seven_day_omelette else None,
+        'extra_usage': extra_usage,
+    }
+
+
 def _normalize_plan_usage(data):
     rate_limit = data.get('rate_limit') or {}
     primary = rate_limit.get('primary_window') or {}
@@ -543,6 +818,155 @@ def fetch_openai_plan_usage():
         return plan_cache['data']
 
 
+def fetch_claude_usage():
+    global claude_cache
+    now = time.time()
+
+    if claude_cache['data']:
+        cached_source = claude_cache['data'].get('usage_source')
+        cache_ttl = 300 if cached_source == 'api' else 30
+        if (now - claude_cache['ts']) < cache_ttl:
+            return claude_cache['data']
+
+    try:
+        state_path = Path.home() / '.claude.json'
+        creds_path = CLAUDE_CREDENTIALS_PATH
+        if not state_path.exists():
+            return None
+
+        state = json.loads(state_path.read_text())
+        creds = json.loads(creds_path.read_text()) if creds_path.exists() else {}
+        oauth = state.get('oauthAccount') or {}
+        claude_oauth = creds.get('claudeAiOauth') or {}
+        projects = state.get('projects') or {}
+
+        preferred_paths = [
+            str(DASHBOARD_DIR),
+            str(Path.home() / 'dashboard'),
+            str(Path.home()),
+        ]
+        project_path = next((p for p in preferred_paths if p in projects), None)
+        if not project_path:
+            project_path = next(
+                (
+                    path for path, info in projects.items()
+                    if isinstance(info, dict) and (info.get('lastModelUsage') or info.get('lastCost') is not None)
+                ),
+                None,
+            )
+
+        project = projects.get(project_path, {}) if project_path else {}
+        raw_models = project.get('lastModelUsage') or {}
+        models = []
+        totals = {
+            'input_tokens': 0,
+            'output_tokens': 0,
+            'cache_read_tokens': 0,
+            'cache_creation_tokens': 0,
+            'web_search_requests': 0,
+            'cost_usd': 0.0,
+        }
+
+        if isinstance(raw_models, dict):
+            for model_name, info in raw_models.items():
+                if not isinstance(info, dict):
+                    continue
+                model_entry = {
+                    'model': model_name,
+                    'input_tokens': int(info.get('inputTokens', 0) or 0),
+                    'output_tokens': int(info.get('outputTokens', 0) or 0),
+                    'cache_read_tokens': int(info.get('cacheReadInputTokens', 0) or 0),
+                    'cache_creation_tokens': int(info.get('cacheCreationInputTokens', 0) or 0),
+                    'web_search_requests': int(info.get('webSearchRequests', 0) or 0),
+                    'cost_usd': float(info.get('costUSD', 0) or 0),
+                }
+                totals['input_tokens'] += model_entry['input_tokens']
+                totals['output_tokens'] += model_entry['output_tokens']
+                totals['cache_read_tokens'] += model_entry['cache_read_tokens']
+                totals['cache_creation_tokens'] += model_entry['cache_creation_tokens']
+                totals['web_search_requests'] += model_entry['web_search_requests']
+                totals['cost_usd'] += model_entry['cost_usd']
+                models.append(model_entry)
+
+        models.sort(key=lambda item: item['cost_usd'], reverse=True)
+        recent_session_cost = float(project.get('lastCost', totals['cost_usd']) or 0)
+        recent_session_total_tokens = (
+            totals['input_tokens']
+            + totals['output_tokens']
+            + totals['cache_read_tokens']
+            + totals['cache_creation_tokens']
+        )
+
+        usage_state = _get_claude_oauth_access_token()
+        if usage_state:
+            status, body = _claude_request_json('https://api.anthropic.com/api/oauth/usage', usage_state['access_token'])
+            if status in (401, 403) and usage_state.get('refresh_token'):
+                try:
+                    usage_state = _refresh_claude_oauth_tokens(usage_state)
+                    status, body = _claude_request_json('https://api.anthropic.com/api/oauth/usage', usage_state['access_token'])
+                except Exception as refresh_exc:
+                    print(f"Claude usage refresh error: {refresh_exc}")
+            if status == 200:
+                payload = json.loads(body)
+                normalized = _normalize_claude_usage(payload, now)
+                normalized.update({
+                    'subscription_type': str(claude_oauth.get('subscriptionType', '')).strip() or normalized.get('subscription_type') or 'unknown',
+                    'billing_type': str(oauth.get('billingType', '')).strip(),
+                    'extra_usage_enabled': bool(oauth.get('hasExtraUsageEnabled', False)),
+                    'project_path': project_path or '',
+                    'recent_session_cost_usd': recent_session_cost,
+                    'recent_session_total_tokens': recent_session_total_tokens,
+                    'models': models,
+                    'totals': totals,
+                    'rate_limit_tier': str(usage_state.get('rate_limit_tier', '')).strip(),
+                })
+                claude_cache['data'] = normalized
+                claude_cache['ts'] = now
+                return claude_cache['data']
+            if status == 429:
+                print('Claude usage endpoint rate-limited; using stale cache' if claude_cache['data'] else 'rate-limited, falling back to local')
+            else:
+                print(f'Claude usage fetch HTTP {status}')
+            if claude_cache['data']:
+                return claude_cache['data']
+
+        usage_windows = _collect_claude_usage_windows(project_path, now)
+        five_hour_window = usage_windows['five_hour_window']
+        one_week_window = usage_windows['one_week_window']
+        five_hour_window['reset_after_seconds'] = max(0, int((5 * 60 * 60) - (now - float(five_hour_window['oldest_ts'])))) if five_hour_window.get('oldest_ts') else 5 * 60 * 60
+        one_week_window['reset_after_seconds'] = max(0, int((7 * 24 * 60 * 60) - (now - float(one_week_window['oldest_ts'])))) if one_week_window.get('oldest_ts') else 7 * 24 * 60 * 60
+
+        claude_cache['data'] = {
+            'subscription_type': str(claude_oauth.get('subscriptionType', '')).strip() or 'unknown',
+            'rate_limit_tier': str(claude_oauth.get('rateLimitTier', '')).strip(),
+            'billing_type': str(oauth.get('billingType', '')).strip(),
+            'extra_usage_enabled': bool(oauth.get('hasExtraUsageEnabled', False)),
+            'project_path': project_path or '',
+            'recent_session_cost_usd': recent_session_cost,
+            'recent_session_total_tokens': recent_session_total_tokens,
+            'models': models,
+            'totals': totals,
+            'usage_source': 'local',
+            'five_hour_window': {
+                **five_hour_window,
+                'used_percent': None,
+                'limit_window_seconds': 5 * 60 * 60,
+                'reset_at': None,
+            },
+            'one_week_window': {
+                **one_week_window,
+                'used_percent': None,
+                'limit_window_seconds': 7 * 24 * 60 * 60,
+                'reset_at': None,
+            },
+        }
+        claude_cache['ts'] = now
+        return claude_cache['data']
+    except Exception as e:
+        print(f"Claude usage fetch error: {e}")
+        return claude_cache['data']
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(DASHBOARD_DIR), **kwargs)
@@ -583,6 +1007,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             
             plan_data = fetch_openai_plan_usage()
+            claude_data = fetch_claude_usage()
             net = get_network()
             disk_io = get_disk_io()
             memory, swap = get_memory_and_swap()
@@ -632,6 +1057,7 @@ class Handler(SimpleHTTPRequestHandler):
                 'proc_count': proc_count,
                 'threads': threads,
                 'openai_plan': plan_data,
+                'claude_usage': claude_data,
             }
             
             self.wfile.write(json.dumps(status).encode())
