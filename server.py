@@ -4,11 +4,12 @@
 import base64
 import json
 import os
+import socket
 import subprocess
 import time
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 PORT = 9200
 DASHBOARD_DIR = Path(__file__).parent
@@ -23,6 +24,7 @@ AUTH_PATH = Path.home() / '.hermes' / 'auth.json'
 # Cache provider usage data
 plan_cache = {'data': None, 'ts': 0}
 claude_cache = {'data': None, 'ts': 0}
+service_health_cache = {'data': None, 'ts': 0}
 
 
 def _parse_iso_timestamp(value):
@@ -30,6 +32,20 @@ def _parse_iso_timestamp(value):
         return datetime.fromisoformat(str(value).replace('Z', '+00:00')).timestamp()
     except Exception:
         return None
+
+
+def _format_local_timestamp(value):
+    ts = _parse_iso_timestamp(value)
+    if ts is None:
+        return ''
+    try:
+        return datetime.fromtimestamp(ts).strftime('%d/%m %H:%M')
+    except Exception:
+        return str(value)[:16]
+
+
+def _iso_now():
+    return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
 
 def _claude_project_dir(project_path):
@@ -497,6 +513,8 @@ def _read_cron_jobs_for_profile(owner, path):
             else:
                 next_str = 'N/A'
 
+            last_run_at = j.get('last_run_at', '') or j.get('last_finished_at', '') or j.get('last_started_at', '')
+
             job_info = {
                 'id': j.get('id', ''),
                 'name': j.get('name', 'Unnamed'),
@@ -506,6 +524,8 @@ def _read_cron_jobs_for_profile(owner, path):
                 'state': display_state,
                 'next_run': next_str,
                 'next_run_at': j.get('next_run_at', ''),
+                'last_run': _format_local_timestamp(last_run_at) if last_run_at else '',
+                'last_run_at': last_run_at,
                 'last_status': j.get('last_status', None),
                 'model': j.get('model', ''),
             }
@@ -569,6 +589,79 @@ def get_agent_ops(crons):
             ],
         }
     return result
+
+
+def _mission_log_sort_key(item):
+    ts = _parse_iso_timestamp(item.get('ts'))
+    return ts if ts is not None else 0
+
+
+def build_mission_log(crons, plan_data, claude_data, memory, disk, temp):
+    """Build a compact timeline from cron runs and current warning-grade events."""
+    items = []
+
+    for job in crons:
+        last_run_at = job.get('last_run_at')
+        if not last_run_at:
+            continue
+        status = job.get('last_status') or 'unknown'
+        severity = 'ok' if status == 'ok' else 'critical'
+        items.append({
+            'ts': last_run_at,
+            'time': job.get('last_run') or _format_local_timestamp(last_run_at),
+            'label': job.get('owner') or job.get('profile') or 'cron',
+            'title': job.get('name') or 'Unnamed cron',
+            'detail': 'last run ' + status,
+            'severity': severity,
+        })
+
+    now = _iso_now()
+    if temp >= 80:
+        items.append({'ts': now, 'time': 'now', 'label': 'TEMP', 'title': 'CPU thermal critical', 'detail': f'{temp:.1f}C', 'severity': 'critical'})
+    elif temp >= 75:
+        items.append({'ts': now, 'time': 'now', 'label': 'TEMP', 'title': 'CPU thermal warning', 'detail': f'{temp:.1f}C', 'severity': 'warn'})
+
+    def _pct(used, total):
+        try:
+            return float(used or 0) / float(total or 0) * 100.0 if total else 0.0
+        except Exception:
+            return 0.0
+
+    ram_pct = _pct(memory.get('used'), memory.get('total')) if isinstance(memory, dict) else 0.0
+    disk_pct = _pct(disk.get('used'), disk.get('total')) if isinstance(disk, dict) else 0.0
+    if ram_pct >= 85:
+        items.append({'ts': now, 'time': 'now', 'label': 'RAM', 'title': 'Memory pressure', 'detail': f'{ram_pct:.0f}% used', 'severity': 'critical' if ram_pct >= 95 else 'warn'})
+    if disk_pct >= 85:
+        items.append({'ts': now, 'time': 'now', 'label': 'DISK', 'title': 'Disk pressure', 'detail': f'{disk_pct:.0f}% used', 'severity': 'critical' if disk_pct >= 95 else 'warn'})
+
+    def _usage_event(provider, window_label, window_data):
+        if not isinstance(window_data, dict) or window_data.get('used_percent') is None:
+            return
+        used = float(window_data.get('used_percent') or 0)
+        if used >= 80:
+            items.append({
+                'ts': now,
+                'time': 'now',
+                'label': provider,
+                'title': window_label + ' usage high',
+                'detail': f'{used:.0f}% used',
+                'severity': 'critical' if used >= 90 else 'warn',
+            })
+
+    if isinstance(plan_data, dict):
+        if plan_data.get('limit_reached'):
+            items.append({'ts': now, 'time': 'now', 'label': 'GPT', 'title': 'OpenAI limit reached', 'detail': 'usage gate closed', 'severity': 'critical'})
+        elif not plan_data.get('allowed', True):
+            items.append({'ts': now, 'time': 'now', 'label': 'GPT', 'title': 'OpenAI usage restricted', 'detail': 'not currently allowed', 'severity': 'warn'})
+        _usage_event('GPT', '5h', plan_data.get('primary_window'))
+        _usage_event('GPT', '1w', plan_data.get('secondary_window'))
+
+    if isinstance(claude_data, dict) and claude_data.get('usage_source') == 'api':
+        _usage_event('Claude', '5h', claude_data.get('five_hour_window'))
+        _usage_event('Claude', '1w', claude_data.get('one_week_window'))
+
+    items.sort(key=_mission_log_sort_key, reverse=True)
+    return items[:8]
 
 
 def _decode_jwt_payload(token):
@@ -1042,6 +1135,85 @@ def fetch_claude_usage():
         return claude_cache['data']
 
 
+def _get_local_ip():
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.settimeout(0.25)
+            sock.connect(('1.1.1.1', 80))
+            return sock.getsockname()[0]
+    except Exception:
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except Exception:
+            return ''
+
+
+def _ping_internet():
+    try:
+        result = subprocess.run(
+            ['ping', '-c', '1', '-W', '1', '1.1.1.1'],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        latency_ms = None
+        if result.returncode == 0:
+            marker = 'time='
+            for part in result.stdout.split():
+                if part.startswith(marker):
+                    latency_ms = float(part[len(marker):])
+                    break
+        return {'reachable': result.returncode == 0, 'latency_ms': latency_ms}
+    except Exception:
+        return {'reachable': False, 'latency_ms': None}
+
+
+def get_service_health():
+    global service_health_cache
+    now = time.time()
+    if service_health_cache['data'] and (now - service_health_cache['ts']) < 30:
+        return service_health_cache['data']
+
+    cron_sources = []
+    mtimes = []
+    for owner, path in CRON_JOB_SOURCES:
+        exists = path.exists()
+        mtime = None
+        age_seconds = None
+        if exists:
+            try:
+                mtime = path.stat().st_mtime
+                age_seconds = max(0, int(now - mtime))
+                mtimes.append(mtime)
+            except Exception:
+                pass
+        cron_sources.append({
+            'owner': owner,
+            'path': str(path),
+            'exists': exists,
+            'age_seconds': age_seconds,
+            'updated_at': datetime.fromtimestamp(mtime).isoformat() if mtime else '',
+        })
+
+    ping = _ping_internet()
+    data = {
+        'dashboard_backend': {
+            'status': 'ok',
+            'port': PORT,
+            'checked_at': _iso_now(),
+        },
+        'hermes_cron': {
+            'status': 'ok' if mtimes else 'missing',
+            'freshness_seconds': max(0, int(now - max(mtimes))) if mtimes else None,
+            'sources': cron_sources,
+        },
+        'internet': ping,
+        'local_ip': _get_local_ip(),
+    }
+    service_health_cache = {'data': data, 'ts': now}
+    return data
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(DASHBOARD_DIR), **kwargs)
@@ -1086,6 +1258,8 @@ class Handler(SimpleHTTPRequestHandler):
             net = get_network()
             disk_io = get_disk_io()
             memory, swap = get_memory_and_swap()
+            disk = get_disk()
+            temp = get_temp()
             
             # System info
             hostname = ''
@@ -1110,14 +1284,15 @@ class Handler(SimpleHTTPRequestHandler):
             
             model_info = get_hermes_model_info()
             crons = get_cron_jobs()
+            service_health = get_service_health()
             status = {
                 'hermes_model': model_info.get('model', ''),
                 'model_info': model_info,
-                'temp': get_temp(),
+                'temp': temp,
                 'cpu': get_cpu_usage(),  # {'total': %, 'max_core': %}
                 'memory': memory,
                 'swap': swap,
-                'disk': get_disk(),
+                'disk': disk,
                 'cpuFreq': get_cpu_freq(),
                 'uptime': get_uptime(),
                 'netRx': net['rx'],
@@ -1128,6 +1303,8 @@ class Handler(SimpleHTTPRequestHandler):
                 'procs': get_top_procs(7),
                 'crons': crons,
                 'agent_ops': get_agent_ops(crons),
+                'mission_log': build_mission_log(crons, plan_data, claude_data, memory, disk, temp),
+                'service_health': service_health,
                 'hostname': hostname,
                 'kernel': kernel,
                 'python': python_ver,

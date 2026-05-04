@@ -11,10 +11,14 @@
     --green: #22c55e; --orange: #f59e0b; --red: #ef4444; --purple: #a78bfa; --cyan: #06b6d4;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--bg); color:var(--text); font-family:'JetBrains Mono','Courier New',monospace; padding:6px; overflow:hidden; width:800px; height:480px; user-select:none; }
+  body { background:var(--bg); color:var(--text); font-family:'JetBrains Mono','Courier New',monospace; padding:6px; overflow:hidden; width:800px; height:480px; user-select:none; transition:background 0.5s ease; }
+  body.warn { --border:#5f4614; --accent:#f59e0b; background:#100f0a; }
+  body.critical { --border:#5f1f24; --accent:#ef4444; background:#12090d; }
 
   /* ── Header ─────────────────────────────────────── */
-  .header { display:flex; justify-content:space-between; align-items:center; padding:4px 10px; margin-bottom:6px; background:var(--card); border-radius:6px; border:1px solid var(--border); }
+  .header { display:flex; justify-content:space-between; align-items:center; padding:4px 10px; margin-bottom:5px; background:var(--card); border-radius:6px; border:1px solid var(--border); box-shadow:0 0 14px rgba(56,189,248,0.06); transition:border-color 0.5s ease, box-shadow 0.5s ease; }
+  body.warn .header { box-shadow:0 0 14px rgba(245,158,11,0.16); }
+  body.critical .header { box-shadow:0 0 16px rgba(239,68,68,0.2); }
   .header h1 { font-size:15px; color:var(--accent); letter-spacing:2px; }
   .header .clock { font-size:14px; color:var(--dim); }
   .dot { width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:4px; }
@@ -29,11 +33,23 @@
   .card-title { font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px; display:flex; align-items:center; gap:5px; flex-shrink:0; }
 
   /* ── Layout ─────────────────────────────────────── */
-  .main-grid  { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:148px 86px; gap:6px; margin-bottom:6px; }
+  .pager { display:flex; align-items:center; justify-content:center; gap:6px; height:22px; margin-bottom:5px; }
+  .page-tab { display:flex; align-items:center; gap:4px; border:1px solid var(--border); background:rgba(255,255,255,0.025); color:var(--dim); border-radius:999px; padding:2px 7px; font:inherit; font-size:9px; text-transform:uppercase; letter-spacing:1px; cursor:pointer; }
+  .page-tab::before { content:''; width:5px; height:5px; border-radius:50%; background:var(--dim); opacity:0.7; }
+  .page-tab.active { color:var(--text); border-color:rgba(56,189,248,0.35); background:rgba(56,189,248,0.08); }
+  .page-tab.active::before { background:var(--accent); box-shadow:0 0 7px var(--accent); opacity:1; }
+  .pages { height:407px; position:relative; overflow:hidden; }
+  .page { position:absolute; inset:0; display:none; }
+  .page.active { display:block; }
+  .main-grid  { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:254px 147px; gap:6px; height:407px; }
   .cpu-card { grid-column:1; grid-row:1; }
   .resources-card { grid-column:1; grid-row:2; }
   .ai-card { grid-column:2; grid-row:1 / span 2; }
-  .bottom-row { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px; height:198px; }
+  .bottom-row { display:grid; grid-template-columns:252px 1fr 252px; grid-template-rows:407px; gap:6px; height:407px; }
+  .mission-grid { display:grid; grid-template-columns:1fr 278px; grid-template-rows:300px 101px; gap:6px; height:407px; }
+  .mission-card { grid-column:1; grid-row:1 / span 2; }
+  .service-card { grid-column:2; grid-row:1; }
+  .identity-card { grid-column:2; grid-row:2; }
 
   /* ── CPU widget ──────────────────────────────────── */
   .cpu-main { display:flex; align-items:stretch; gap:14px; flex:1; height:100%; }
@@ -135,8 +151,56 @@
   .warn-text { font-size:11px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .warn-empty { font-size:12px; color:var(--green); padding-top:14px; text-align:center; }
 
+  /* ── Droid status visual ────────────────────────── */
+  .droid-stage { flex:1; display:grid; grid-template-rows:1fr 64px; gap:8px; min-height:0; }
+  .droid-art { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:center; justify-items:center; min-height:0; }
+  .droid { width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; border:1px solid rgba(255,255,255,0.07); border-radius:8px; background:rgba(255,255,255,0.025); position:relative; overflow:hidden; }
+  .droid::before { content:''; position:absolute; inset:10px; border-radius:999px; opacity:0.18; filter:blur(16px); }
+  .droid.c3po::before { background:#f6c547; }
+  .droid.eve::before { background:#a78bfa; }
+  .droid svg { width:86px; height:126px; z-index:1; overflow:visible; }
+  .droid .antenna { transform-origin:50% 42%; animation:droidNod 3.4s ease-in-out infinite; }
+  .droid .eye { animation:droidBlink 4s ease-in-out infinite; }
+  .droid.eve .core { animation:eveFloat 3.8s ease-in-out infinite; }
+  .droid.failed { border-color:rgba(239,68,68,0.45); }
+  .droid.failed svg { filter:drop-shadow(0 0 8px rgba(239,68,68,0.5)); }
+  .droid.paused { border-color:rgba(245,158,11,0.45); }
+  .droid.ok svg { filter:drop-shadow(0 0 8px rgba(34,197,94,0.22)); }
+  .droid-caption { z-index:1; display:flex; align-items:center; gap:6px; font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+  .droid-caption span:last-child { color:var(--dim); }
+  .droid-feed { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .droid-stat { border:1px solid var(--border); border-radius:6px; padding:6px; background:rgba(0,0,0,0.12); min-width:0; }
+  .droid-stat b { display:block; font-size:16px; line-height:1; color:var(--text); }
+  .droid-stat span { display:block; margin-top:4px; font-size:9px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-transform:uppercase; letter-spacing:1px; }
+
+  /* ── Mission / services ─────────────────────────── */
+  .mission-list { flex:1; min-height:0; display:flex; flex-direction:column; gap:5px; overflow:hidden; }
+  .mission-item { display:grid; grid-template-columns:50px 1fr; gap:8px; align-items:start; padding:6px 7px; border-left:3px solid var(--green); border-radius:5px; background:rgba(255,255,255,0.025); min-height:43px; }
+  .mission-item.warn { border-left-color:var(--orange); background:rgba(245,158,11,0.06); }
+  .mission-item.critical { border-left-color:var(--red); background:rgba(239,68,68,0.07); }
+  .mission-time { font-size:10px; color:var(--dim); white-space:nowrap; }
+  .mission-body { min-width:0; }
+  .mission-title { font-size:12px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mission-detail { font-size:10px; color:var(--dim); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mission-label { color:var(--accent); text-transform:uppercase; letter-spacing:1px; }
+  .service-list { flex:1; display:flex; flex-direction:column; gap:7px; min-height:0; }
+  .service-row { display:grid; grid-template-columns:76px 1fr 56px; gap:6px; align-items:center; padding:6px; border:1px solid rgba(255,255,255,0.06); border-radius:6px; background:rgba(255,255,255,0.025); min-width:0; }
+  .service-name { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; white-space:nowrap; }
+  .service-value { font-size:12px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .service-pill { font-size:9px; text-align:center; text-transform:uppercase; letter-spacing:1px; border-radius:999px; padding:2px 4px; border:1px solid var(--border); color:var(--dim); }
+  .service-pill.ok { color:var(--green); border-color:rgba(34,197,94,0.25); background:rgba(34,197,94,0.08); }
+  .service-pill.warn { color:var(--orange); border-color:rgba(245,158,11,0.25); background:rgba(245,158,11,0.08); }
+  .service-pill.critical { color:var(--red); border-color:rgba(239,68,68,0.25); background:rgba(239,68,68,0.08); }
+  .identity-grid { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:6px; align-items:center; }
+  .identity-box { min-width:0; }
+  .identity-box span { display:block; color:var(--dim); font-size:9px; text-transform:uppercase; letter-spacing:1px; }
+  .identity-box b { display:block; margin-top:3px; font-size:11px; font-weight:normal; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
 
   @keyframes glow { 0%,100%{opacity:1} 50%{opacity:.5} }
+  @keyframes droidNod { 0%,100%{ transform:rotate(0deg) } 48%{ transform:rotate(-4deg) } 56%{ transform:rotate(3deg) } }
+  @keyframes droidBlink { 0%,92%,100%{ transform:scaleY(1) } 95%{ transform:scaleY(0.2) } }
+  @keyframes eveFloat { 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-4px) } }
   .pulse { animation:glow 2s ease-in-out infinite; }
 </style>
 </head>
@@ -151,6 +215,14 @@
   <button onclick="exitDashboard()" style="background:none;border:1px solid var(--border);color:var(--dim);border-radius:4px;cursor:pointer;padding:2px 8px;font-size:10px;font-family:inherit;margin-left:6px;">✕ Quit</button>
 </div>
 
+<div class="pager" id="pager">
+  <button class="page-tab active" data-page="0" type="button">System/AI</button>
+  <button class="page-tab" data-page="1" type="button">Agents/Crons</button>
+  <button class="page-tab" data-page="2" type="button">Mission/Services</button>
+</div>
+
+<div class="pages">
+<section class="page active" data-page="0">
 <!-- MAIN GRID: CPU + Resources + AI Usage -->
 <div class="main-grid">
 
@@ -286,8 +358,52 @@
 
 </div>
 
+</section>
+<section class="page" data-page="1">
 <!-- BOTTOM ROW -->
 <div class="bottom-row">
+
+  <!-- Droid Status -->
+  <div class="card" style="flex-direction:column;">
+    <div class="card-title">🤖 DROID STATUS</div>
+    <div class="droid-stage">
+      <div class="droid-art">
+        <div class="droid c3po idle" id="droid-c3po">
+          <svg viewBox="0 0 100 140" aria-hidden="true">
+            <g class="antenna">
+              <circle cx="50" cy="22" r="19" fill="#d9a629" stroke="#f8d86a" stroke-width="3"/>
+              <rect x="38" y="38" width="24" height="10" rx="4" fill="#b98519"/>
+              <circle class="eye" cx="42" cy="20" r="4" fill="#15202b"/>
+              <circle class="eye" cx="58" cy="20" r="4" fill="#15202b"/>
+              <path d="M40 30 H60" stroke="#6b4b12" stroke-width="3" stroke-linecap="round"/>
+            </g>
+            <rect x="30" y="50" width="40" height="45" rx="12" fill="#c99725" stroke="#f8d86a" stroke-width="3"/>
+            <path d="M39 60 H61 M37 72 H63 M41 84 H59" stroke="#6b4b12" stroke-width="3" stroke-linecap="round"/>
+            <path d="M30 58 L16 78 M70 58 L84 78" stroke="#d9a629" stroke-width="8" stroke-linecap="round"/>
+            <path d="M39 95 L34 126 M61 95 L66 126" stroke="#d9a629" stroke-width="9" stroke-linecap="round"/>
+          </svg>
+          <div class="droid-caption"><b>C-3PO</b><span id="c3po-state">idle</span></div>
+        </div>
+        <div class="droid eve idle" id="droid-eve">
+          <svg viewBox="0 0 100 140" aria-hidden="true">
+            <g class="core">
+              <path d="M50 15 C74 15 84 39 78 64 C73 88 62 111 50 127 C38 111 27 88 22 64 C16 39 26 15 50 15Z" fill="#17122b" stroke="#a78bfa" stroke-width="4"/>
+              <ellipse cx="50" cy="42" rx="24" ry="14" fill="#0b1020" stroke="#c4b5fd" stroke-width="2"/>
+              <ellipse class="eye" cx="41" cy="42" rx="7" ry="4" fill="#a78bfa"/>
+              <ellipse class="eye" cx="59" cy="42" rx="7" ry="4" fill="#a78bfa"/>
+              <path d="M34 77 C42 85 58 85 66 77" fill="none" stroke="#c4b5fd" stroke-width="3" stroke-linecap="round"/>
+              <path d="M25 65 L11 85 M75 65 L89 85" stroke="#a78bfa" stroke-width="7" stroke-linecap="round"/>
+            </g>
+          </svg>
+          <div class="droid-caption"><b>EVE</b><span id="eve-state">idle</span></div>
+        </div>
+      </div>
+      <div class="droid-feed">
+        <div class="droid-stat"><b id="droid-jobs">0</b><span>total jobs</span></div>
+        <div class="droid-stat"><b id="droid-alerts">0</b><span>agent alerts</span></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Cron Jobs -->
   <div class="card" style="flex-direction:column;">
@@ -309,10 +425,37 @@
 
 </div>
 
+</section>
+<section class="page" data-page="2">
+  <div class="mission-grid">
+    <div class="card mission-card" style="flex-direction:column;">
+      <div class="card-title">▣ MISSION LOG</div>
+      <div class="mission-list" id="mission-log"></div>
+    </div>
+    <div class="card service-card" style="flex-direction:column;">
+      <div class="card-title">◌ SERVICE / NETWORK</div>
+      <div class="service-list" id="service-health"></div>
+    </div>
+    <div class="card identity-card" style="flex-direction:column;">
+      <div class="card-title">⌁ NODE</div>
+      <div class="identity-grid">
+        <div class="identity-box"><span>Host</span><b id="node-host">--</b></div>
+        <div class="identity-box"><span>IP</span><b id="node-ip">--</b></div>
+        <div class="identity-box"><span>Kernel</span><b id="node-kernel">--</b></div>
+        <div class="identity-box"><span>Python</span><b id="node-python">--</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
 <script>
 var CPU_CIRC = Math.PI * 35;
 var lastStatusData = null;
 var lastStatusOkAt = 0;
+var currentPage = 0;
+var pageCount = 3;
+var pageTimer = null;
 
 function color(p) { return p<50?'var(--green)':p<80?'var(--orange)':'var(--red)'; }
 function tempColor(t) { return t<60?'var(--green)':t<75?'var(--orange)':'var(--red)'; }
@@ -386,6 +529,9 @@ function pct(used, total){
 function warnClass(kind){
   return kind === 'hit' ? 'hit' : 'warn';
 }
+function severityClass(severity){
+  return severity === 'critical' || severity === 'hit' ? 'critical' : (severity === 'warn' ? 'warn' : 'ok');
+}
 function agentStateClass(state){
   return ['ok', 'paused', 'failed', 'idle'].indexOf(state) >= 0 ? state : 'idle';
 }
@@ -443,8 +589,16 @@ function collectWarnings(d, fetchError){
 
   return items.slice(0, 5);
 }
+function applySeverity(items){
+  var cls = '';
+  if((items || []).some(function(item){ return item.kind === 'hit' || item.severity === 'critical'; })) cls = 'critical';
+  else if((items || []).length) cls = 'warn';
+  document.body.classList.remove('warn', 'critical');
+  if(cls) document.body.classList.add(cls);
+}
 function renderWarnings(d, fetchError){
   var items = collectWarnings(d, fetchError);
+  applySeverity(items);
   document.getElementById('warn-count').textContent = String(items.length);
   var wdiv = document.getElementById('warnings');
   if(!items.length){
@@ -457,6 +611,26 @@ function renderWarnings(d, fetchError){
       +'<span class="warn-text" title="'+esc(item.text)+'">'+esc(item.text)+'</span>'
       +'</div>';
   }).join('');
+}
+function renderDroidStatus(d){
+  var ops = d.agent_ops || {};
+  var c3po = ops['C-3PO'] || {state:'idle', job_count:0, paused_count:0, failed_count:0};
+  var eve = ops['EVE'] || {state:'idle', job_count:0, paused_count:0, failed_count:0};
+  [
+    {id:'droid-c3po', label:'c3po-state', data:c3po},
+    {id:'droid-eve', label:'eve-state', data:eve}
+  ].forEach(function(item){
+    var state = agentStateClass(item.data.state || 'idle');
+    var el = document.getElementById(item.id);
+    if(el) el.className = el.className.replace(/\s+(ok|paused|failed|idle)\b/g, '') + ' ' + state;
+    var label = document.getElementById(item.label);
+    if(label) label.textContent = state;
+  });
+  var totalJobs = Number(c3po.job_count || 0) + Number(eve.job_count || 0);
+  var alerts = Number(c3po.paused_count || 0) + Number(c3po.failed_count || 0)
+    + Number(eve.paused_count || 0) + Number(eve.failed_count || 0);
+  document.getElementById('droid-jobs').textContent = String(totalJobs);
+  document.getElementById('droid-alerts').textContent = String(alerts);
 }
 function renderAgentOps(d){
   var ops = d.agent_ops || {};
@@ -477,6 +651,77 @@ function renderAgentOps(d){
       +'</div>';
   }).join('');
   document.getElementById('agent-ops').innerHTML = html;
+}
+
+function renderMissionLog(d){
+  var list = document.getElementById('mission-log');
+  var items = d.mission_log || [];
+  if(!items.length){
+    list.innerHTML = '<div class="warn-empty">No recent mission events</div>';
+    return;
+  }
+  list.innerHTML = items.map(function(item){
+    var sev = severityClass(item.severity);
+    var title = (item.label ? item.label + ' - ' : '') + (item.title || 'Event');
+    return '<div class="mission-item '+sev+'">'
+      +'<div class="mission-time">'+esc(item.time || '--')+'</div>'
+      +'<div class="mission-body">'
+      +'<div class="mission-title" title="'+esc(title)+'"><span class="mission-label">'+esc(item.label || 'SYS')+'</span> '+esc(item.title || 'Event')+'</div>'
+      +'<div class="mission-detail" title="'+esc(item.detail || '')+'">'+esc(item.detail || '')+'</div>'
+      +'</div></div>';
+  }).join('');
+}
+
+function formatAge(seconds){
+  if(seconds == null) return '--';
+  seconds = Math.max(0, Number(seconds || 0));
+  if(seconds < 60) return seconds.toFixed(0)+'s';
+  if(seconds < 3600) return Math.floor(seconds/60)+'m';
+  if(seconds < 86400) return Math.floor(seconds/3600)+'h';
+  return Math.floor(seconds/86400)+'d';
+}
+function renderServiceHealth(d){
+  var health = d.service_health || {};
+  var hermes = health.hermes_cron || {};
+  var internet = health.internet || {};
+  var rows = [
+    {name:'Backend', value:'port '+((health.dashboard_backend && health.dashboard_backend.port) || '9200'), status:'ok'},
+    {name:'Hermes', value:'fresh '+formatAge(hermes.freshness_seconds), status:hermes.status === 'ok' ? 'ok' : 'warn'},
+    {name:'Internet', value:internet.latency_ms != null ? internet.latency_ms.toFixed(0)+' ms' : 'unreachable', status:internet.reachable ? 'ok' : 'critical'},
+    {name:'Local IP', value:health.local_ip || '--', status:health.local_ip ? 'ok' : 'warn'}
+  ];
+  document.getElementById('service-health').innerHTML = rows.map(function(row){
+    return '<div class="service-row">'
+      +'<span class="service-name">'+esc(row.name)+'</span>'
+      +'<span class="service-value" title="'+esc(row.value)+'">'+esc(row.value)+'</span>'
+      +'<span class="service-pill '+severityClass(row.status)+'">'+esc(row.status)+'</span>'
+      +'</div>';
+  }).join('');
+  document.getElementById('node-host').textContent = d.hostname || '--';
+  document.getElementById('node-ip').textContent = health.local_ip || '--';
+  document.getElementById('node-kernel').textContent = d.kernel || '--';
+  document.getElementById('node-python').textContent = d.python || '--';
+}
+
+function showPage(idx, manual){
+  currentPage = ((idx % pageCount) + pageCount) % pageCount;
+  Array.prototype.forEach.call(document.querySelectorAll('.page'), function(page){
+    page.classList.toggle('active', Number(page.getAttribute('data-page')) === currentPage);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.page-tab'), function(tab){
+    tab.classList.toggle('active', Number(tab.getAttribute('data-page')) === currentPage);
+  });
+  if(manual) resetPageTimer();
+}
+function resetPageTimer(){
+  if(pageTimer) clearInterval(pageTimer);
+  pageTimer = setInterval(function(){ showPage(currentPage + 1, false); }, 12000);
+}
+function initPager(){
+  Array.prototype.forEach.call(document.querySelectorAll('.page-tab'), function(tab){
+    tab.addEventListener('click', function(){ showPage(Number(tab.getAttribute('data-page')), true); });
+  });
+  resetPageTimer();
 }
 
 function updateClock(){
@@ -639,7 +884,10 @@ async function fetchMetrics(){
 
     // ── Agent Ops / Attention ───────────────────────
     renderAgentOps(d);
+    renderDroidStatus(d);
     renderWarnings(d, null);
+    renderMissionLog(d);
+    renderServiceHealth(d);
 
     // ── Model + status ───────────────────────────────
     var modelInfo = d.model_info || {model:d.hermes_model||'', provider:''};
@@ -667,6 +915,7 @@ function exitDashboard(){
 }
 
 setInterval(updateClock,1000); updateClock();
+initPager();
 fetchMetrics();
 setInterval(fetchMetrics,2000);
 </script>
