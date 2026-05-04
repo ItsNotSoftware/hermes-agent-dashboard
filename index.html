@@ -112,20 +112,28 @@
   .cron-meta { font-size:12px; color:var(--dim); margin-top:1px; }
   .cron-status { font-size:12px; flex-shrink:0; }
 
-  /* ── Processes widget ────────────────────────────── */
-  .proc-table { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-  .proc-thead { display:grid; grid-template-columns:1fr 52px; gap:0; padding:0 0 4px; border-bottom:1px solid var(--border); margin-bottom:2px; }
-  .proc-th { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; }
-  .proc-th.r { text-align:right; }
-  .proc-rows { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-  .proc-row { display:grid; grid-template-columns:1fr 52px; gap:0; padding:3px 0; border-bottom:1px solid rgba(30,41,59,0.6); align-items:center; }
-  .proc-row:last-child { border-bottom:none; }
-  .proc-row:hover { background:rgba(255,255,255,0.02); }
-  .proc-cmd { font-size:12px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:6px; }
-  .proc-cmd .proc-exe { color:var(--text); }
-  .proc-cmd .proc-args { color:var(--dim); }
-  .proc-cell { font-size:12px; font-weight:bold; text-align:right; }
-  .proc-user { font-size:11px; color:var(--dim); text-align:right; font-weight:normal; }
+  /* ── Agent Ops / Attention widget ───────────────── */
+  .ops-panel { flex:1; min-height:0; display:grid; grid-template-rows:58px 1fr; gap:7px; overflow:hidden; }
+  .agent-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; min-height:0; }
+  .agent-box { min-width:0; border:1px solid rgba(30,41,59,0.9); border-radius:6px; padding:5px 6px; background:rgba(255,255,255,0.025); display:flex; flex-direction:column; gap:4px; overflow:hidden; }
+  .agent-top { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .agent-name { font-size:12px; font-weight:bold; color:var(--text); letter-spacing:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .agent-pill { font-size:9px; text-transform:uppercase; letter-spacing:1px; padding:1px 5px; border-radius:999px; border:1px solid var(--border); flex-shrink:0; }
+  .agent-pill.ok { color:var(--green); background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.25); }
+  .agent-pill.paused, .agent-pill.idle { color:var(--orange); background:rgba(245,158,11,0.10); border-color:rgba(245,158,11,0.25); }
+  .agent-pill.failed { color:var(--red); background:rgba(239,68,68,0.10); border-color:rgba(239,68,68,0.25); }
+  .agent-meta { display:flex; justify-content:space-between; gap:6px; font-size:10px; color:var(--dim); white-space:nowrap; }
+  .agent-next { font-size:10px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .agent-next b { color:var(--text); font-weight:normal; }
+  .warn-box { min-height:0; display:flex; flex-direction:column; overflow:hidden; border-top:1px solid rgba(255,255,255,0.06); padding-top:6px; }
+  .warn-title { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:1.3px; margin-bottom:4px; display:flex; justify-content:space-between; }
+  .warn-list { flex:1; min-height:0; display:flex; flex-direction:column; gap:3px; overflow:hidden; }
+  .warn-item { display:grid; grid-template-columns:46px 1fr; gap:6px; align-items:center; min-height:18px; padding:2px 5px; border-radius:4px; background:rgba(255,255,255,0.025); border-left:3px solid var(--orange); }
+  .warn-item.hit { border-left-color:var(--red); background:rgba(239,68,68,0.07); }
+  .warn-item.warn { border-left-color:var(--orange); }
+  .warn-label { font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:0.8px; white-space:nowrap; }
+  .warn-text { font-size:11px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .warn-empty { font-size:12px; color:var(--green); padding-top:14px; text-align:center; }
 
 
   @keyframes glow { 0%,100%{opacity:1} 50%{opacity:.5} }
@@ -287,15 +295,15 @@
     <div class="cron-list" id="cron-jobs"></div>
   </div>
 
-  <!-- Processes (htop-style) -->
+  <!-- Agent Ops / Attention -->
   <div class="card" style="flex-direction:column;">
-    <div class="card-title">⚙️ PROCESSES</div>
-    <div class="proc-table">
-      <div class="proc-thead">
-        <span class="proc-th">Command</span>
-        <span class="proc-th r">CPU%</span>
+    <div class="card-title">⚙️ AGENT OPS</div>
+    <div class="ops-panel">
+      <div class="agent-grid" id="agent-ops"></div>
+      <div class="warn-box">
+        <div class="warn-title"><span>Attention</span><span id="warn-count">0</span></div>
+        <div class="warn-list" id="warnings"></div>
       </div>
-      <div class="proc-rows" id="procs"></div>
     </div>
   </div>
 
@@ -303,6 +311,8 @@
 
 <script>
 var CPU_CIRC = Math.PI * 35;
+var lastStatusData = null;
+var lastStatusOkAt = 0;
 
 function color(p) { return p<50?'var(--green)':p<80?'var(--orange)':'var(--red)'; }
 function tempColor(t) { return t<60?'var(--green)':t<75?'var(--orange)':'var(--red)'; }
@@ -370,6 +380,104 @@ function formatModelLabel(info){
   if(provider && model) return provider+' • '+model;
   return model || provider || '';
 }
+function pct(used, total){
+  return total ? (Number(used || 0) / Number(total || 0) * 100) : 0;
+}
+function warnClass(kind){
+  return kind === 'hit' ? 'hit' : 'warn';
+}
+function agentStateClass(state){
+  return ['ok', 'paused', 'failed', 'idle'].indexOf(state) >= 0 ? state : 'idle';
+}
+function usageAlert(provider, label, windowData, items){
+  if(!windowData || windowData.used_percent == null) return;
+  var used = Number(windowData.used_percent || 0);
+  if(used >= 90) items.push({kind:'hit', label:provider, text:label+' usage '+used.toFixed(0)+'%'});
+  else if(used >= 80) items.push({kind:'warn', label:provider, text:label+' usage '+used.toFixed(0)+'%'});
+}
+function collectWarnings(d, fetchError){
+  var items = [];
+  var now = Date.now();
+  if(fetchError){
+    items.push({kind:'hit', label:'UI', text:'Status fetch failed: '+fetchError});
+  }
+  if(lastStatusOkAt && now - lastStatusOkAt > 6000){
+    items.push({kind:'warn', label:'UI', text:'Dashboard data stale '+Math.floor((now - lastStatusOkAt) / 1000)+'s'});
+  }
+  if(!d) return items;
+
+  (d.crons || []).forEach(function(c){
+    var name = c.owner || c.profile || 'cron';
+    if(c.last_status && c.last_status !== 'ok'){
+      items.push({kind:'hit', label:name, text:'Failed cron: '+(c.name || 'Unnamed')});
+    }
+    if((c.state || 'active') === 'paused'){
+      items.push({kind:'warn', label:name, text:'Paused cron: '+(c.name || 'Unnamed')});
+    }
+  });
+
+  var temp = Number(d.temp || 0);
+  if(temp >= 80) items.push({kind:'hit', label:'TEMP', text:'CPU temperature '+temp.toFixed(1)+'°C'});
+  else if(temp >= 75) items.push({kind:'warn', label:'TEMP', text:'CPU temperature '+temp.toFixed(1)+'°C'});
+
+  var ramPct = pct(d.memory && d.memory.used, d.memory && d.memory.total);
+  var diskPct = pct(d.disk && d.disk.used, d.disk && d.disk.total);
+  if(ramPct >= 95) items.push({kind:'hit', label:'RAM', text:'RAM usage '+ramPct.toFixed(0)+'%'});
+  else if(ramPct >= 85) items.push({kind:'warn', label:'RAM', text:'RAM usage '+ramPct.toFixed(0)+'%'});
+  if(diskPct >= 95) items.push({kind:'hit', label:'DISK', text:'Disk usage '+diskPct.toFixed(0)+'%'});
+  else if(diskPct >= 85) items.push({kind:'warn', label:'DISK', text:'Disk usage '+diskPct.toFixed(0)+'%'});
+
+  var plan = d.openai_plan;
+  if(plan){
+    if(plan.limit_reached) items.push({kind:'hit', label:'GPT', text:'OpenAI usage limit hit'});
+    else if(!plan.allowed) items.push({kind:'warn', label:'GPT', text:'OpenAI usage not allowed'});
+    usageAlert('GPT', '5h', plan.primary_window, items);
+    usageAlert('GPT', '1w', plan.secondary_window, items);
+  }
+
+  var claude = d.claude_usage;
+  if(claude && claude.usage_source === 'api'){
+    usageAlert('Claude', '5h', claude.five_hour_window, items);
+    usageAlert('Claude', '1w', claude.one_week_window, items);
+  }
+
+  return items.slice(0, 5);
+}
+function renderWarnings(d, fetchError){
+  var items = collectWarnings(d, fetchError);
+  document.getElementById('warn-count').textContent = String(items.length);
+  var wdiv = document.getElementById('warnings');
+  if(!items.length){
+    wdiv.innerHTML = '<div class="warn-empty">No attention items</div>';
+    return;
+  }
+  wdiv.innerHTML = items.map(function(item){
+    return '<div class="warn-item '+warnClass(item.kind)+'">'
+      +'<span class="warn-label">'+esc(item.label)+'</span>'
+      +'<span class="warn-text" title="'+esc(item.text)+'">'+esc(item.text)+'</span>'
+      +'</div>';
+  }).join('');
+}
+function renderAgentOps(d){
+  var ops = d.agent_ops || {};
+  var names = ['C-3PO', 'EVE'];
+  var html = names.map(function(name){
+    var a = ops[name] || {name:name, state:'idle', job_count:0, paused_count:0, failed_count:0};
+    var state = a.state || 'idle';
+    var next = a.next_job;
+    var nextText = next ? ((next.next_run || 'N/A')+' '+(next.name || 'Unnamed')) : 'No active next job';
+    var alertText = [];
+    if(a.failed_count) alertText.push(a.failed_count+' failed');
+    if(a.paused_count) alertText.push(a.paused_count+' paused');
+    return '<div class="agent-box">'
+      +'<div class="agent-top"><span class="agent-name">'+esc(a.name || name)+'</span>'
+      +'<span class="agent-pill '+agentStateClass(state)+'">'+esc(state)+'</span></div>'
+      +'<div class="agent-meta"><span>'+Number(a.job_count || 0)+' jobs</span><span>'+esc(alertText.join(' / ') || 'clear')+'</span></div>'
+      +'<div class="agent-next" title="'+esc(nextText)+'"><b>Next</b> '+esc(nextText)+'</div>'
+      +'</div>';
+  }).join('');
+  document.getElementById('agent-ops').innerHTML = html;
+}
 
 function updateClock(){
   var n=new Date();
@@ -381,6 +489,8 @@ async function fetchMetrics(){
     var r = await fetch('/api/status');
     if(!r.ok) throw new Error('HTTP '+r.status);
     var d = await r.json();
+    lastStatusData = d;
+    lastStatusOkAt = Date.now();
 
     // ── CPU arc ──────────────────────────────────────
     var cpuObj = d.cpu && typeof d.cpu === 'object' ? d.cpu : {total:d.cpu, cores:[]};
@@ -527,24 +637,9 @@ async function fetchMetrics(){
       cdiv.innerHTML='<div style="color:var(--dim);font-size:10px;padding-top:8px;">No jobs scheduled</div>';
     }
 
-    // ── Processes ────────────────────────────────────
-    var pdiv=document.getElementById('procs'); pdiv.innerHTML='';
-    if(d.procs && d.procs.length){
-      d.procs.forEach(function(p){
-        var cc=color(p.cpu);
-        var mc=p.mem>20?'var(--red)':p.mem>10?'var(--orange)':'var(--dim)';
-        // split exe from args for highlighting
-        var parts=p.name.split(' ');
-        var exe=parts[0];
-        var args=parts.slice(1).join(' ');
-        var cmdHtml='<span class="proc-exe">'+exe+'</span>'
-          +(args?' <span class="proc-args">'+args+'</span>':'');
-        pdiv.innerHTML+='<div class="proc-row">'
-          +'<span class="proc-cmd" title="'+p.name+'">'+cmdHtml+'</span>'
-          +'<span class="proc-cell" style="color:'+cc+'">'+p.cpu.toFixed(1)+'</span>'
-          +'</div>';
-      });
-    }
+    // ── Agent Ops / Attention ───────────────────────
+    renderAgentOps(d);
+    renderWarnings(d, null);
 
     // ── Model + status ───────────────────────────────
     var modelInfo = d.model_info || {model:d.hermes_model||'', provider:''};
@@ -562,6 +657,7 @@ async function fetchMetrics(){
     console.error('Fetch error:', e);
     document.getElementById('live-dot').className='dot off';
     document.getElementById('status-text').textContent='OFFLINE';
+    renderWarnings(lastStatusData, e && e.message ? e.message : String(e));
   }
 }
 

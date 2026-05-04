@@ -527,6 +527,50 @@ def get_cron_jobs():
     return result
 
 
+def get_agent_ops(crons):
+    """Return compact per-agent cron health derived from the combined cron list."""
+    result = {}
+    for owner, _path in CRON_JOB_SOURCES:
+        jobs = [job for job in crons if job.get('owner') == owner or job.get('profile') == owner]
+        paused = [job for job in jobs if job.get('state') == 'paused']
+        failed = [job for job in jobs if job.get('last_status') and job.get('last_status') != 'ok']
+        upcoming = [
+            job for job in jobs
+            if job.get('state') != 'paused' and job.get('next_run_at')
+        ]
+        upcoming.sort(key=_cron_sort_key)
+        next_job = upcoming[0] if upcoming else None
+        state = 'ok'
+        if failed:
+            state = 'failed'
+        elif paused:
+            state = 'paused'
+        elif not jobs:
+            state = 'idle'
+
+        result[owner] = {
+            'name': owner,
+            'state': state,
+            'job_count': len(jobs),
+            'paused_count': len(paused),
+            'failed_count': len(failed),
+            'next_job': {
+                'name': next_job.get('name', 'Unnamed'),
+                'next_run': next_job.get('next_run', 'N/A'),
+                'next_run_at': next_job.get('next_run_at', ''),
+            } if next_job else None,
+            'paused_jobs': [
+                {'name': job.get('name', 'Unnamed'), 'next_run': job.get('next_run', 'N/A')}
+                for job in paused
+            ],
+            'failed_jobs': [
+                {'name': job.get('name', 'Unnamed'), 'last_status': job.get('last_status')}
+                for job in failed
+            ],
+        }
+    return result
+
+
 def _decode_jwt_payload(token):
     try:
         payload = token.split('.')[1]
@@ -1065,6 +1109,7 @@ class Handler(SimpleHTTPRequestHandler):
                 pass
             
             model_info = get_hermes_model_info()
+            crons = get_cron_jobs()
             status = {
                 'hermes_model': model_info.get('model', ''),
                 'model_info': model_info,
@@ -1079,9 +1124,10 @@ class Handler(SimpleHTTPRequestHandler):
                 'netTx': net['tx'],
                 'diskRd': disk_io.get('rd', 0),
                 'diskWt': disk_io.get('wt', 0),
-                # Show a couple more top processes in the dashboard widget.
+                # Keep the process list in the API for lightweight diagnostics.
                 'procs': get_top_procs(7),
-                'crons': get_cron_jobs(),
+                'crons': crons,
+                'agent_ops': get_agent_ops(crons),
                 'hostname': hostname,
                 'kernel': kernel,
                 'python': python_ver,
