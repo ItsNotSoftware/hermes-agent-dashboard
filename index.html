@@ -6,36 +6,35 @@
 <title>RPi Dashboard</title>
 <style>
   :root {
-    --void: #1f1f1f; --deck: #292929; --panel: #303030; --panel2: #353d4a;
-    --line: #454b54; --line2: #59616d; --text: #e7edf3; --muted: #a5b7c9;
-    --faint: #6d747d; --blue: #569EFF; --cyan: #70BAFA; --violet: #a990ff;
-    --purple: #a990ff; --magenta: #c6a7ff; --amber: #e6c95c; --yellow: #e6c95c; --ok: #69d58c;
-    --void-rgb: 31,31,31; --deck-rgb: 41,41,41; --panel-rgb: 48,48,48;
-    --line-rgb: 69,75,84; --blue-rgb: 86,158,255; --cyan-rgb: 112,186,250;
-    --violet-rgb: 169,144,255; --amber-rgb: 230,201,92; --ok-rgb: 105,213,140;
-    --shadow: rgba(var(--blue-rgb), 0.15); --alert: var(--amber); --severe: var(--magenta);
+    --void: #0d1117; --deck: #010409; --panel: #161b22; --panel2: #161b22;
+    --line: #30363d; --line2: #21262d; --text: #c9d1d9; --muted: #8b949e;
+    --faint: #6e7681; --blue: #58a6ff; --cyan: #58a6ff; --violet: #a371f7;
+    --purple: #a371f7; --magenta: #a371f7; --amber: #d29922; --yellow: #d29922; --ok: #3fb950;
+    --void-rgb: 13,17,23; --deck-rgb: 1,4,9; --panel-rgb: 22,27,34;
+    --line-rgb: 48,54,61; --blue-rgb: 88,166,255; --cyan-rgb: 88,166,255;
+    --violet-rgb: 163,113,247; --amber-rgb: 210,153,34; --ok-rgb: 63,185,80;
+    --shadow: rgba(1, 4, 9, 0.32); --alert: var(--amber); --severe: var(--purple);
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body {
     width:800px; height:480px; overflow:hidden; padding:6px; user-select:none;
-    background:
-      linear-gradient(180deg, #2f3540 0%, var(--deck) 46%, var(--void) 100%);
+    background:var(--void);
     color:var(--text); font-family:'JetBrains Mono','Courier New',monospace;
     display:grid; grid-template-rows:36px 28px 1fr; gap:5px;
   }
   body::before {
-    content:''; position:fixed; inset:0; pointer-events:none; opacity:.16;
+    content:''; position:fixed; inset:0; pointer-events:none; opacity:.08;
     background:
-      linear-gradient(rgba(var(--cyan-rgb),.035) 1px, transparent 1px) 0 0 / 100% 24px;
+      linear-gradient(rgba(var(--blue-rgb),.08) 1px, transparent 1px) 0 0 / 100% 24px;
   }
-  body.warn { --line:#3e5143; --line2:#5d6d4f; --alert:var(--amber); }
-  body.critical { --line:#4b3f68; --line2:#6d5790; --alert:var(--magenta); --severe:var(--purple); }
+  body.warn { --alert:var(--amber); }
+  body.critical { --alert:var(--purple); --severe:var(--purple); }
 
   .header {
     position:relative; z-index:1; display:grid; align-items:center;
     border:1px solid var(--line); border-radius:8px;
-    background:linear-gradient(180deg, rgba(58,65,76,.96), rgba(var(--deck-rgb),.96));
-    box-shadow:0 0 18px var(--shadow), inset 0 1px 0 rgba(255,255,255,.05);
+    background:var(--panel);
+    box-shadow:0 8px 18px var(--shadow), inset 0 1px 0 rgba(201,209,217,.03);
   }
   .header { grid-template-columns:minmax(0,1fr) 104px minmax(0,1fr); gap:8px; padding:0 9px; }
   .bar-left, .bar-right { min-width:0; display:flex; align-items:center; gap:8px; }
@@ -57,20 +56,19 @@
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .page-tab::before { content:''; width:5px; height:5px; border-radius:50%; background:var(--faint); }
-  .page-tab.active { color:var(--text); border-color:rgba(var(--cyan-rgb),.54); background:linear-gradient(180deg, rgba(var(--blue-rgb),.15), rgba(var(--violet-rgb),.10)); box-shadow:inset 0 0 12px rgba(var(--cyan-rgb),.10); }
+  .page-tab.active { color:var(--text); border-color:rgba(var(--blue-rgb),.54); background:rgba(var(--blue-rgb),.12); box-shadow:inset 0 0 12px rgba(var(--blue-rgb),.08); }
   .page-tab.active::before { background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
   .pages { position:relative; overflow:hidden; min-height:0; z-index:1; }
   .page { position:absolute; inset:0; display:none; }
   .page.active { display:block; }
-  .card { background:linear-gradient(180deg, rgba(var(--panel-rgb),.93), rgba(var(--deck-rgb),.9)); border:1px solid var(--line); border-radius:8px; padding:8px 9px; display:flex; position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.04); }
-  .card::before { content:''; position:absolute; inset:0 0 auto 0; height:2px; background:linear-gradient(90deg, var(--blue), var(--cyan)); opacity:.72; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:8px 9px; display:flex; position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(201,209,217,.03); }
+  .card::before { content:''; position:absolute; inset:0 0 auto 0; height:2px; background:var(--blue); opacity:.72; }
   .card-title { min-width:0; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px; display:flex; align-items:center; gap:5px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-  .main-grid  { display:grid; grid-template-columns:270px 262px 1fr; grid-template-rows:238px 1fr; gap:6px; height:100%; }
+  .main-grid  { display:grid; grid-template-columns:492px 1fr; grid-template-rows:238px 1fr; gap:6px; height:100%; }
   .cpu-card { grid-column:1; grid-row:1; }
   .resources-card { grid-column:1; grid-row:2; }
   .ai-card { grid-column:2; grid-row:1 / span 2; }
-  .core-proc-card { grid-column:3; grid-row:1 / span 2; }
   .bottom-row { display:grid; grid-template-columns:236px 1fr 246px; grid-template-rows:100%; gap:6px; height:100%; }
   .mission-grid { display:grid; grid-template-columns:238px 1fr 238px; grid-template-rows:173px 183px; gap:6px; height:100%; }
   .mission-card { grid-column:2; grid-row:1 / span 2; }
@@ -117,11 +115,10 @@
   .res-sub b { color:var(--text); font-weight:normal; }
 
   /* ── AI usage widget ─────────────────────────────── */
-  .ai-usage { display:flex; flex:1; flex-direction:column; min-width:0; gap:8px; }
-  .usage-stack { display:grid; grid-template-rows:1fr 1fr; gap:8px; flex:1; min-width:0; }
+  .ai-usage { display:flex; flex:1; flex-direction:column; min-width:0; gap:6px; }
+  .usage-stack { display:grid; grid-template-rows:105px 105px minmax(0,1fr); gap:6px; flex:1; min-width:0; min-height:0; }
   .usage-provider { position:relative; display:flex; flex-direction:column; gap:7px; min-width:0; padding:8px; border-radius:8px; border:1px solid var(--line); background:
-      linear-gradient(180deg, rgba(var(--blue-rgb),0.035), rgba(var(--void-rgb),0.16)),
-      rgba(var(--panel-rgb),0.28); }
+      rgba(var(--deck-rgb),0.32); overflow:hidden; }
   .usage-provider::before { content:''; position:absolute; inset:0 0 auto 0; height:2px; border-radius:8px 8px 0 0; opacity:0.7; }
   .usage-provider.openai::before { background:linear-gradient(90deg, var(--cyan), var(--blue)); }
   .usage-provider.claude::before { background:linear-gradient(90deg, var(--violet), var(--cyan)); }
@@ -137,8 +134,8 @@
   .provider-pill.warn { color:var(--amber); border-color:rgba(var(--amber-rgb),0.32); background:rgba(var(--amber-rgb),0.10); }
   .provider-pill.hit { color:var(--magenta); border-color:rgba(var(--violet-rgb),0.34); background:rgba(var(--violet-rgb),0.11); }
   .usage-sub { font-size:9px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .usage-window-list { display:flex; flex-direction:column; gap:6px; flex:1; justify-content:center; }
-  .usage-window-row { display:grid; grid-template-columns:24px 1fr 42px 68px; gap:6px; align-items:center; }
+  .usage-window-list { display:flex; flex-direction:column; gap:5px; flex:1; justify-content:center; min-height:0; }
+  .usage-window-row { display:grid; grid-template-columns:22px minmax(0,1fr) 38px 54px; gap:5px; align-items:center; min-width:0; }
   .usage-window-tag { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
   .usage-window-track { height:14px; background:rgba(255,255,255,0.05); border-radius:999px; overflow:hidden; position:relative; }
   .usage-window-fill { height:100%; border-radius:999px; transition:width 0.8s ease; position:relative; }
@@ -147,6 +144,11 @@
   .usage-window-meta { font-size:10px; color:var(--muted); text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0; }
   .usage-footer { display:flex; justify-content:space-between; gap:8px; padding-top:2px; border-top:1px solid rgba(255,255,255,0.05); font-size:10px; color:var(--muted); }
   .usage-footer span { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .core-proc-panel { min-height:0; display:flex; flex-direction:column; padding:7px; border:1px solid var(--line); border-radius:8px; background:rgba(var(--deck-rgb),0.32); overflow:hidden; }
+  .core-proc-panel .card-title { margin-bottom:4px; }
+  .core-proc-panel .proc-list { gap:3px; }
+  .core-proc-panel .proc-row { grid-template-columns:34px minmax(0,1fr) 34px 34px; gap:4px; min-height:24px; padding:3px 5px; }
+  .core-proc-panel .proc-head { min-height:18px; }
 
   /* ── Cron widget ─────────────────────────────────── */
   .cron-list { flex:1; display:flex; flex-direction:column; gap:0; overflow:hidden; }
@@ -392,13 +394,12 @@
             <span id="claude-project">Project --</span>
           </div>
         </div>
+        <div class="core-proc-panel">
+          <div class="card-title">PROC</div>
+          <div class="proc-list" id="core-top-procs"></div>
+        </div>
       </div>
     </div>
-  </div>
-
-  <div class="card core-proc-card" style="flex-direction:column;">
-    <div class="card-title">PROC</div>
-    <div class="proc-list" id="core-top-procs"></div>
   </div>
 
   <!-- Resources Card -->
@@ -448,28 +449,28 @@
         <div class="droid c3po idle" id="droid-c3po">
           <svg viewBox="0 0 100 140" aria-hidden="true">
             <g class="antenna">
-              <circle cx="50" cy="22" r="19" fill="#e6c95c" stroke="#e7edf3" stroke-width="3"/>
-              <rect x="38" y="38" width="24" height="10" rx="4" fill="#9fbd5f"/>
-              <circle class="eye" cx="42" cy="20" r="4" fill="#292929"/>
-              <circle class="eye" cx="58" cy="20" r="4" fill="#292929"/>
-              <path d="M40 30 H60" stroke="#3e5143" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="50" cy="22" r="19" fill="var(--amber)" stroke="var(--text)" stroke-width="3"/>
+              <rect x="38" y="38" width="24" height="10" rx="4" fill="var(--ok)"/>
+              <circle class="eye" cx="42" cy="20" r="4" fill="var(--deck)"/>
+              <circle class="eye" cx="58" cy="20" r="4" fill="var(--deck)"/>
+              <path d="M40 30 H60" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/>
             </g>
-            <rect x="30" y="50" width="40" height="45" rx="12" fill="#e6c95c" stroke="#e7edf3" stroke-width="3"/>
-            <path d="M39 60 H61 M37 72 H63 M41 84 H59" stroke="#3e5143" stroke-width="3" stroke-linecap="round"/>
-            <path d="M30 58 L16 78 M70 58 L84 78" stroke="#e6c95c" stroke-width="8" stroke-linecap="round"/>
-            <path d="M39 95 L34 126 M61 95 L66 126" stroke="#e6c95c" stroke-width="9" stroke-linecap="round"/>
+            <rect x="30" y="50" width="40" height="45" rx="12" fill="var(--amber)" stroke="var(--text)" stroke-width="3"/>
+            <path d="M39 60 H61 M37 72 H63 M41 84 H59" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/>
+            <path d="M30 58 L16 78 M70 58 L84 78" stroke="var(--amber)" stroke-width="8" stroke-linecap="round"/>
+            <path d="M39 95 L34 126 M61 95 L66 126" stroke="var(--amber)" stroke-width="9" stroke-linecap="round"/>
           </svg>
           <div class="droid-caption"><b>C-3PO</b><span id="c3po-state">idle</span></div>
         </div>
         <div class="droid eve idle" id="droid-eve">
           <svg viewBox="0 0 100 140" aria-hidden="true">
             <g class="core">
-              <path d="M50 15 C74 15 84 39 78 64 C73 88 62 111 50 127 C38 111 27 88 22 64 C16 39 26 15 50 15Z" fill="#303030" stroke="#70BAFA" stroke-width="4"/>
-              <ellipse cx="50" cy="42" rx="24" ry="14" fill="#292929" stroke="#e7edf3" stroke-width="2"/>
-              <ellipse class="eye" cx="41" cy="42" rx="7" ry="4" fill="#70BAFA"/>
-              <ellipse class="eye" cx="59" cy="42" rx="7" ry="4" fill="#70BAFA"/>
-              <path d="M34 77 C42 85 58 85 66 77" fill="none" stroke="#e7edf3" stroke-width="3" stroke-linecap="round"/>
-              <path d="M25 65 L11 85 M75 65 L89 85" stroke="#70BAFA" stroke-width="7" stroke-linecap="round"/>
+              <path d="M50 15 C74 15 84 39 78 64 C73 88 62 111 50 127 C38 111 27 88 22 64 C16 39 26 15 50 15Z" fill="var(--panel)" stroke="var(--blue)" stroke-width="4"/>
+              <ellipse cx="50" cy="42" rx="24" ry="14" fill="var(--deck)" stroke="var(--text)" stroke-width="2"/>
+              <ellipse class="eye" cx="41" cy="42" rx="7" ry="4" fill="var(--blue)"/>
+              <ellipse class="eye" cx="59" cy="42" rx="7" ry="4" fill="var(--blue)"/>
+              <path d="M34 77 C42 85 58 85 66 77" fill="none" stroke="var(--text)" stroke-width="3" stroke-linecap="round"/>
+              <path d="M25 65 L11 85 M75 65 L89 85" stroke="var(--blue)" stroke-width="7" stroke-linecap="round"/>
             </g>
           </svg>
           <div class="droid-caption"><b>EVE</b><span id="eve-state">idle</span></div>
@@ -993,7 +994,7 @@ function renderCaptainConsole(d, warnings){
   document.getElementById('console-io').textContent = 'R '+rd.v+rd.u+' / W '+wt.v+wt.u;
 
   var procs = (d.procs || []).slice(0, 6);
-  renderProcessList('core-top-procs', procs);
+  renderProcessList('core-top-procs', procs.slice(0, 4));
   renderProcessList('mission-top-procs', procs.slice(0, 4));
 }
 
@@ -1005,7 +1006,7 @@ function renderProcessList(id, procs){
   } else {
     target.innerHTML = '<div class="proc-row proc-head"><span>PID</span><b>CMD</b><span>CPU</span><span>RAM</span></div>'
       + procs.map(function(p){
-      var procName = truncateText(p.name || '', id === 'core-top-procs' ? 26 : 22);
+      var procName = truncateText(p.name || '', id === 'core-top-procs' ? 20 : 22);
       return '<div class="proc-row">'
         +'<span>'+esc(p.pid || '')+'</span>'
         +'<b title="'+esc(p.name || '')+'">'+esc(procName)+'</b>'
