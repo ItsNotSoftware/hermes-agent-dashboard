@@ -14,7 +14,10 @@ PORT = 9200
 DASHBOARD_DIR = Path(__file__).parent
 
 # Read cron jobs
-JOBS_PATH = Path.home() / '.hermes' / 'cron' / 'jobs.json'
+CRON_JOB_SOURCES = [
+    ('C-3PO', Path.home() / '.hermes' / 'cron' / 'jobs.json'),
+    ('EVE', Path.home() / '.hermes' / 'profiles' / 'eve' / 'cron' / 'jobs.json'),
+]
 AUTH_PATH = Path.home() / '.hermes' / 'auth.json'
 
 # Cache provider usage data
@@ -433,16 +436,34 @@ def get_hermes_model():
     return get_hermes_model_info().get('model', '')
 
 
-def get_cron_jobs():
-    """Read cron jobs from Hermes cron state file."""
-    if not JOBS_PATH.exists():
+def _cron_sort_key(job):
+    next_run_at = job.get('next_run_at') or ''
+    return (1, '') if not next_run_at else (0, next_run_at)
+
+
+def _read_cron_jobs_for_profile(owner, path):
+    if not path.exists():
         return []
     try:
-        data = json.loads(JOBS_PATH.read_text())
-        jobs = data.get('jobs', [])
-        result = []
-        now = datetime.now()
-        for j in jobs:
+        data = json.loads(path.read_text())
+    except Exception as e:
+        print(f"Error reading {owner} cron jobs from {path}: {e}")
+        return []
+
+    if not isinstance(data, dict):
+        print(f"Error reading {owner} cron jobs from {path}: root JSON is not an object")
+        return []
+
+    jobs = data.get('jobs', [])
+    if not isinstance(jobs, list):
+        print(f"Error reading {owner} cron jobs from {path}: jobs is not a list")
+        return []
+
+    result = []
+    for j in jobs:
+        if not isinstance(j, dict):
+            continue
+        try:
             # Extract schedule info
             schedule = j.get('schedule', {})
             if isinstance(schedule, dict):
@@ -475,10 +496,12 @@ def get_cron_jobs():
                     next_str = next_run_at[:19]
             else:
                 next_str = 'N/A'
-            
+
             job_info = {
                 'id': j.get('id', ''),
                 'name': j.get('name', 'Unnamed'),
+                'owner': owner,
+                'profile': owner,
                 'schedule': schedule_str,
                 'state': display_state,
                 'next_run': next_str,
@@ -487,13 +510,21 @@ def get_cron_jobs():
                 'model': j.get('model', ''),
             }
             result.append(job_info)
+        except Exception as e:
+            print(f"Error parsing {owner} cron job in {path}: {e}")
+            continue
 
-        # Sort by next_run_at ISO string (naturally sortable)
-        result.sort(key=lambda x: x.get('next_run_at', 'zzz'))
-        return result
-    except Exception as e:
-        print(f"Error reading cron jobs: {e}")
-        return []
+    return result
+
+
+def get_cron_jobs():
+    """Read and combine cron jobs from Hermes profile state files."""
+    result = []
+    for owner, path in CRON_JOB_SOURCES:
+        result.extend(_read_cron_jobs_for_profile(owner, path))
+
+    result.sort(key=_cron_sort_key)
+    return result
 
 
 def _decode_jwt_payload(token):
@@ -824,7 +855,7 @@ def fetch_claude_usage():
 
     if claude_cache['data']:
         cached_source = claude_cache['data'].get('usage_source')
-        cache_ttl = 300 if cached_source == 'api' else 30
+        cache_ttl = 120 if cached_source == 'api' else 30
         if (now - claude_cache['ts']) < cache_ttl:
             return claude_cache['data']
 
