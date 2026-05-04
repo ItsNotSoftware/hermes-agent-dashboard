@@ -25,6 +25,8 @@ AUTH_PATH = Path.home() / '.hermes' / 'auth.json'
 plan_cache = {'data': None, 'ts': 0}
 claude_cache = {'data': None, 'ts': 0}
 service_health_cache = {'data': None, 'ts': 0}
+vault_cache = {'data': None, 'ts': 0}
+git_cache = {'data': None, 'ts': 0}
 
 
 def _parse_iso_timestamp(value):
@@ -326,6 +328,46 @@ def get_disk_io():
     _disk_prev['wt'] = wt
     _disk_prev['ts'] = now
     return {'rd': rd_speed, 'wt': wt_speed}
+
+
+def get_power_status():
+    """Return cheap Raspberry Pi thermal/throttle metadata without requiring sudo."""
+    status = {
+        'available': False,
+        'throttled_hex': '',
+        'under_voltage': False,
+        'freq_capped': False,
+        'throttled': False,
+        'soft_temp_limit': False,
+        'summary': 'unknown',
+    }
+    try:
+        result = subprocess.run(['vcgencmd', 'get_throttled'], capture_output=True, text=True, timeout=2)
+        raw = result.stdout.strip()
+        if result.returncode != 0 or '=' not in raw:
+            return status
+        value = int(raw.split('=', 1)[1], 16)
+        status.update({
+            'available': True,
+            'throttled_hex': hex(value),
+            'under_voltage': bool(value & 0x1 or value & 0x10000),
+            'freq_capped': bool(value & 0x2 or value & 0x20000),
+            'throttled': bool(value & 0x4 or value & 0x40000),
+            'soft_temp_limit': bool(value & 0x8 or value & 0x80000),
+        })
+        flags = []
+        if status['under_voltage']:
+            flags.append('undervoltage')
+        if status['freq_capped']:
+            flags.append('freq cap')
+        if status['throttled']:
+            flags.append('throttled')
+        if status['soft_temp_limit']:
+            flags.append('soft temp')
+        status['summary'] = ', '.join(flags) if flags else 'nominal'
+        return status
+    except Exception:
+        return status
 
 
 def get_top_procs(n=10):
@@ -1214,6 +1256,118 @@ def get_service_health():
     return data
 
 
+def get_vault_intel():
+    """Return safe Obsidian vault metadata only; never read note contents."""
+    global vault_cache
+    now = time.time()
+    if vault_cache['data'] and (now - vault_cache['ts']) < 60:
+        return vault_cache['data']
+
+    vault_path = Path.home() / 'Documents' / 'Obsidian Vault'
+    data = {
+        'path': str(vault_path),
+        'present': vault_path.exists() and vault_path.is_dir(),
+        'note_count': 0,
+        'vault_size_bytes': 0,
+        'recent_notes': [],
+        'ksp_notes': [],
+    }
+    if not data['present']:
+        vault_cache = {'data': data, 'ts': now}
+        return data
+
+    notes = []
+    ksp_notes = []
+    total_size = 0
+    try:
+        for path in vault_path.rglob('*'):
+            if not path.is_file():
+                continue
+            try:
+                stat = path.stat()
+            except Exception:
+                continue
+            total_size += stat.st_size
+            if path.suffix.lower() != '.md':
+                continue
+            rel = path.relative_to(vault_path)
+            rel_name = str(rel.with_suffix(''))
+            notes.append({'name': rel_name, 'mtime': stat.st_mtime})
+            if 'ksp' in rel_name.lower():
+                ksp_notes.append({'name': rel_name, 'mtime': stat.st_mtime})
+    except Exception:
+        pass
+
+    notes.sort(key=lambda item: item['mtime'], reverse=True)
+    ksp_notes.sort(key=lambda item: item['mtime'], reverse=True)
+    data.update({
+        'note_count': len(notes),
+        'vault_size_bytes': total_size,
+        'recent_notes': [
+            {'name': item['name'], 'updated_at': datetime.fromtimestamp(item['mtime']).isoformat()}
+            for item in notes[:6]
+        ],
+        'ksp_notes': [
+            {'name': item['name'], 'updated_at': datetime.fromtimestamp(item['mtime']).isoformat()}
+            for item in ksp_notes[:4]
+        ],
+    })
+    vault_cache = {'data': data, 'ts': now}
+    return data
+
+
+def _git_run(args):
+    try:
+        result = subprocess.run(
+            ['git', *args],
+            cwd=str(DASHBOARD_DIR),
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if result.returncode != 0:
+            return ''
+        return result.stdout.strip()
+    except Exception:
+        return ''
+
+
+def get_repo_status():
+    """Return local git metadata only. Does not fetch or contact remotes."""
+    global git_cache
+    now = time.time()
+    if git_cache['data'] and (now - git_cache['ts']) < 10:
+        return git_cache['data']
+
+    branch = _git_run(['branch', '--show-current'])
+    head = _git_run(['rev-parse', '--short', 'HEAD'])
+    porcelain = _git_run(['status', '--porcelain'])
+    ahead = 0
+    behind = 0
+    upstream = _git_run(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])
+    if upstream:
+        counts = _git_run(['rev-list', '--left-right', '--count', f'HEAD...{upstream}']).split()
+        if len(counts) == 2:
+            try:
+                ahead = int(counts[0])
+                behind = int(counts[1])
+            except Exception:
+                ahead = 0
+                behind = 0
+
+    data = {
+        'branch': branch,
+        'head': head,
+        'dirty': bool(porcelain),
+        'changed_files': len([line for line in porcelain.splitlines() if line.strip()]),
+        'upstream': upstream,
+        'ahead': ahead,
+        'behind': behind,
+    }
+    git_cache = {'data': data, 'ts': now}
+    return data
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(DASHBOARD_DIR), **kwargs)
@@ -1299,6 +1453,8 @@ class Handler(SimpleHTTPRequestHandler):
                 'netTx': net['tx'],
                 'diskRd': disk_io.get('rd', 0),
                 'diskWt': disk_io.get('wt', 0),
+                'load': get_load(),
+                'power': get_power_status(),
                 # Keep the process list in the API for lightweight diagnostics.
                 'procs': get_top_procs(7),
                 'crons': crons,
@@ -1312,6 +1468,8 @@ class Handler(SimpleHTTPRequestHandler):
                 'threads': threads,
                 'openai_plan': plan_data,
                 'claude_usage': claude_data,
+                'vault_intel': get_vault_intel(),
+                'repo_status': get_repo_status(),
             }
             
             self.wfile.write(json.dumps(status).encode())

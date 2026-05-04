@@ -33,8 +33,8 @@
   .card-title { font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px; display:flex; align-items:center; gap:5px; flex-shrink:0; }
 
   /* ── Layout ─────────────────────────────────────── */
-  .pager { display:flex; align-items:center; justify-content:center; gap:6px; height:22px; margin-bottom:5px; }
-  .page-tab { display:flex; align-items:center; gap:4px; border:1px solid var(--border); background:rgba(255,255,255,0.025); color:var(--dim); border-radius:999px; padding:2px 7px; font:inherit; font-size:9px; text-transform:uppercase; letter-spacing:1px; cursor:pointer; }
+  .pager { display:flex; align-items:center; justify-content:center; gap:5px; height:22px; margin-bottom:5px; }
+  .page-tab { display:flex; align-items:center; gap:4px; border:1px solid var(--border); background:rgba(255,255,255,0.025); color:var(--dim); border-radius:999px; padding:2px 6px; font:inherit; font-size:8px; text-transform:uppercase; letter-spacing:.5px; cursor:pointer; }
   .page-tab::before { content:''; width:5px; height:5px; border-radius:50%; background:var(--dim); opacity:0.7; }
   .page-tab.active { color:var(--text); border-color:rgba(56,189,248,0.35); background:rgba(56,189,248,0.08); }
   .page-tab.active::before { background:var(--accent); box-shadow:0 0 7px var(--accent); opacity:1; }
@@ -46,10 +46,20 @@
   .resources-card { grid-column:1; grid-row:2; }
   .ai-card { grid-column:2; grid-row:1 / span 2; }
   .bottom-row { display:grid; grid-template-columns:252px 1fr 252px; grid-template-rows:407px; gap:6px; height:407px; }
-  .mission-grid { display:grid; grid-template-columns:1fr 278px; grid-template-rows:300px 101px; gap:6px; height:407px; }
-  .mission-card { grid-column:1; grid-row:1 / span 2; }
-  .service-card { grid-column:2; grid-row:1; }
-  .identity-card { grid-column:2; grid-row:2; }
+  .mission-grid { display:grid; grid-template-columns:252px 1fr 252px; grid-template-rows:198px 203px; gap:6px; height:407px; }
+  .mission-card { grid-column:2; grid-row:1 / span 2; }
+  .service-card { grid-column:1; grid-row:1; }
+  .identity-card { grid-column:1; grid-row:2; }
+  .captain-card { grid-column:3; grid-row:1; }
+  .proc-card { grid-column:3; grid-row:2; }
+  .telemetry-grid { display:grid; grid-template-columns:1fr 1fr 1fr; grid-template-rows:132px 132px 137px; gap:6px; height:407px; }
+  .spark-card { flex-direction:column; min-width:0; }
+  .spark-wide { grid-column:span 2; }
+  .vault-grid { display:grid; grid-template-columns:284px 1fr 246px; grid-template-rows:202px 199px; gap:6px; height:407px; }
+  .vault-summary-card { grid-column:1; grid-row:1; }
+  .vault-recent-card { grid-column:2; grid-row:1 / span 2; }
+  .vault-ksp-card { grid-column:1; grid-row:2; }
+  .vault-repo-card { grid-column:3; grid-row:1 / span 2; }
 
   /* ── CPU widget ──────────────────────────────────── */
   .cpu-main { display:flex; align-items:stretch; gap:14px; flex:1; height:100%; }
@@ -196,6 +206,32 @@
   .identity-box span { display:block; color:var(--dim); font-size:9px; text-transform:uppercase; letter-spacing:1px; }
   .identity-box b { display:block; margin-top:3px; font-size:11px; font-weight:normal; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
+  /* ── Telemetry / console / intel ────────────────── */
+  .spark-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:5px; }
+  .spark-name { font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:1.2px; }
+  .spark-value { font-size:14px; font-weight:bold; color:var(--text); white-space:nowrap; }
+  .sparkline { width:100%; height:72px; flex:1; min-height:0; }
+  .spark-meta { display:flex; justify-content:space-between; gap:8px; font-size:9px; color:var(--dim); margin-top:4px; white-space:nowrap; }
+  .spark-empty { font-size:11px; color:var(--dim); display:flex; align-items:center; justify-content:center; flex:1; }
+  .kv-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; flex:1; align-content:start; }
+  .kv { min-width:0; border:1px solid rgba(255,255,255,0.06); border-radius:6px; background:rgba(255,255,255,0.025); padding:7px; }
+  .kv span { display:block; font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; white-space:nowrap; }
+  .kv b { display:block; margin-top:4px; font-size:14px; font-weight:normal; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .proc-list, .intel-list, .health-list { flex:1; min-height:0; display:flex; flex-direction:column; gap:4px; overflow:hidden; }
+  .proc-row { display:grid; grid-template-columns:40px 1fr 42px 42px; gap:6px; align-items:center; padding:4px 5px; border-radius:5px; background:rgba(255,255,255,0.025); border-left:3px solid rgba(56,189,248,0.45); min-height:25px; }
+  .proc-row span { font-size:10px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .proc-row b { font-size:11px; font-weight:normal; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .health-item { display:grid; grid-template-columns:42px 1fr; gap:6px; align-items:center; padding:5px 6px; border-radius:5px; background:rgba(255,255,255,0.025); border-left:3px solid var(--green); min-height:28px; }
+  .health-item.warn { border-left-color:var(--orange); background:rgba(245,158,11,0.06); }
+  .health-item.critical { border-left-color:var(--red); background:rgba(239,68,68,0.07); }
+  .health-label { font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:.8px; }
+  .health-text { font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mood-line { margin-top:7px; padding:7px; border:1px solid rgba(255,255,255,0.07); border-radius:6px; font-size:11px; color:var(--text); background:rgba(0,0,0,0.14); min-height:46px; }
+  .intel-row { display:grid; grid-template-columns:1fr 56px; gap:6px; align-items:center; padding:5px 6px; border-radius:5px; background:rgba(255,255,255,0.025); border-left:3px solid rgba(167,139,250,0.5); min-height:27px; }
+  .intel-row b { font-size:11px; font-weight:normal; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .intel-row span { font-size:9px; color:var(--dim); text-align:right; white-space:nowrap; }
+  .repo-box { display:flex; flex-direction:column; gap:8px; flex:1; min-width:0; }
+
 
   @keyframes glow { 0%,100%{opacity:1} 50%{opacity:.5} }
   @keyframes droidNod { 0%,100%{ transform:rotate(0deg) } 48%{ transform:rotate(-4deg) } 56%{ transform:rotate(3deg) } }
@@ -219,6 +255,8 @@
   <button class="page-tab active" data-page="0" type="button">System/AI</button>
   <button class="page-tab" data-page="1" type="button">Agents/Crons</button>
   <button class="page-tab" data-page="2" type="button">Mission/Services</button>
+  <button class="page-tab" data-page="3" type="button">Telemetry</button>
+  <button class="page-tab" data-page="4" type="button">Vault/Intel</button>
 </div>
 
 <div class="pages">
@@ -445,6 +483,91 @@
         <div class="identity-box"><span>Python</span><b id="node-python">--</b></div>
       </div>
     </div>
+    <div class="card captain-card" style="flex-direction:column;">
+      <div class="card-title">⌬ CAPTAIN CONSOLE</div>
+      <div class="kv-grid">
+        <div class="kv"><span>Uptime</span><b id="console-uptime">--</b></div>
+        <div class="kv"><span>Load</span><b id="console-load">--</b></div>
+        <div class="kv"><span>Processes</span><b id="console-procs">--</b></div>
+        <div class="kv"><span>Threads</span><b id="console-threads">--</b></div>
+        <div class="kv"><span>Thermal</span><b id="console-power">--</b></div>
+        <div class="kv"><span>I/O</span><b id="console-io">--</b></div>
+      </div>
+    </div>
+    <div class="card proc-card" style="flex-direction:column;">
+      <div class="card-title">▤ TOP PROCESSES</div>
+      <div class="proc-list" id="top-procs"></div>
+    </div>
+  </div>
+</section>
+<section class="page" data-page="3">
+  <div class="telemetry-grid">
+    <div class="card spark-card">
+      <div class="spark-head"><span class="spark-name">CPU</span><b class="spark-value" id="spark-cpu-val">--%</b></div>
+      <svg class="sparkline" id="spark-cpu" viewBox="0 0 220 72" preserveAspectRatio="none"></svg>
+      <div class="spark-meta"><span id="spark-cpu-min">min --</span><span id="spark-cpu-max">max --</span></div>
+    </div>
+    <div class="card spark-card">
+      <div class="spark-head"><span class="spark-name">RAM</span><b class="spark-value" id="spark-ram-val">--%</b></div>
+      <svg class="sparkline" id="spark-ram" viewBox="0 0 220 72" preserveAspectRatio="none"></svg>
+      <div class="spark-meta"><span id="spark-ram-min">min --</span><span id="spark-ram-max">max --</span></div>
+    </div>
+    <div class="card spark-card">
+      <div class="spark-head"><span class="spark-name">Thermal</span><b class="spark-value" id="spark-temp-val">--°C</b></div>
+      <svg class="sparkline" id="spark-temp" viewBox="0 0 220 72" preserveAspectRatio="none"></svg>
+      <div class="spark-meta"><span id="spark-temp-min">min --</span><span id="spark-temp-max">max --</span></div>
+    </div>
+    <div class="card spark-card spark-wide">
+      <div class="spark-head"><span class="spark-name">Network RX / TX</span><b class="spark-value" id="spark-net-val">--</b></div>
+      <svg class="sparkline" id="spark-net" viewBox="0 0 460 72" preserveAspectRatio="none"></svg>
+      <div class="spark-meta"><span id="spark-net-min">rx --</span><span id="spark-net-max">tx --</span></div>
+    </div>
+    <div class="card spark-card">
+      <div class="spark-head"><span class="spark-name">AI Usage</span><b class="spark-value" id="spark-ai-val">--</b></div>
+      <svg class="sparkline" id="spark-ai" viewBox="0 0 220 72" preserveAspectRatio="none"></svg>
+      <div class="spark-meta"><span id="spark-ai-min">GPT --</span><span id="spark-ai-max">Claude --</span></div>
+    </div>
+    <div class="card spark-card spark-wide">
+      <div class="spark-head"><span class="spark-name">Disk Read / Write</span><b class="spark-value" id="spark-diskio-val">--</b></div>
+      <svg class="sparkline" id="spark-diskio" viewBox="0 0 460 72" preserveAspectRatio="none"></svg>
+      <div class="spark-meta"><span id="spark-diskio-min">read --</span><span id="spark-diskio-max">write --</span></div>
+    </div>
+    <div class="card spark-card">
+      <div class="spark-head"><span class="spark-name">Load</span><b class="spark-value" id="spark-load-val">--</b></div>
+      <svg class="sparkline" id="spark-load" viewBox="0 0 220 72" preserveAspectRatio="none"></svg>
+      <div class="spark-meta"><span id="spark-load-min">1m --</span><span id="spark-load-max">15m --</span></div>
+    </div>
+  </div>
+</section>
+<section class="page" data-page="4">
+  <div class="vault-grid">
+    <div class="card vault-summary-card" style="flex-direction:column;">
+      <div class="card-title">◇ VAULT SIGNAL</div>
+      <div class="kv-grid">
+        <div class="kv"><span>Notes</span><b id="vault-notes">--</b></div>
+        <div class="kv"><span>Size</span><b id="vault-size">--</b></div>
+        <div class="kv"><span>Status</span><b id="vault-present">--</b></div>
+        <div class="kv"><span>KSP</span><b id="vault-ksp-count">--</b></div>
+      </div>
+    </div>
+    <div class="card vault-recent-card" style="flex-direction:column;">
+      <div class="card-title">✦ RECENT INTEL</div>
+      <div class="intel-list" id="vault-recent"></div>
+    </div>
+    <div class="card vault-ksp-card" style="flex-direction:column;">
+      <div class="card-title">◈ KSP NOTES</div>
+      <div class="intel-list" id="vault-ksp"></div>
+    </div>
+    <div class="card vault-repo-card" style="flex-direction:column;">
+      <div class="card-title">⌁ COMMAND DECK</div>
+      <div class="repo-box">
+        <div class="kv"><span>Repo Branch</span><b id="repo-branch">--</b></div>
+        <div class="kv"><span>HEAD</span><b id="repo-head">--</b></div>
+        <div class="kv"><span>Working Tree</span><b id="repo-dirty">--</b></div>
+        <div class="kv"><span>Upstream</span><b id="repo-sync">--</b></div>
+        <div class="mood-line" id="droid-mood">Awaiting telemetry.</div>
+      </div>
+    </div>
   </div>
 </section>
 </div>
@@ -454,8 +577,10 @@ var CPU_CIRC = Math.PI * 35;
 var lastStatusData = null;
 var lastStatusOkAt = 0;
 var currentPage = 0;
-var pageCount = 3;
+var pageCount = 5;
 var pageTimer = null;
+var historyLimit = 90;
+var telemetryHistory = {cpu:[], ram:[], temp:[], netRx:[], netTx:[], diskRd:[], diskWt:[], aiGpt:[], aiClaude:[], load:[]};
 
 function color(p) { return p<50?'var(--green)':p<80?'var(--orange)':'var(--red)'; }
 function tempColor(t) { return t<60?'var(--green)':t<75?'var(--orange)':'var(--red)'; }
@@ -469,6 +594,13 @@ function formatSpeed(b) {
   if(b >= 1e6) return {v:(b/1e6).toFixed(1), u:'MB/s'};
   if(b >= 1e3) return {v:(b/1e3).toFixed(0), u:'KB/s'};
   return {v:b.toFixed(0), u:'B/s'};
+}
+function formatBytes(b) {
+  b = Number(b || 0);
+  if(b >= 1e9) return (b/1e9).toFixed(1)+' GB';
+  if(b >= 1e6) return (b/1e6).toFixed(1)+' MB';
+  if(b >= 1e3) return (b/1e3).toFixed(0)+' KB';
+  return b.toFixed(0)+' B';
 }
 function formatTokenCount(n) {
   n = Number(n || 0);
@@ -525,6 +657,54 @@ function formatModelLabel(info){
 }
 function pct(used, total){
   return total ? (Number(used || 0) / Number(total || 0) * 100) : 0;
+}
+function pushHistory(key, value){
+  if(!telemetryHistory[key]) return;
+  value = Number(value || 0);
+  telemetryHistory[key].push(isFinite(value) ? value : 0);
+  if(telemetryHistory[key].length > historyLimit) telemetryHistory[key].shift();
+}
+function pathForSeries(values, maxValue, w, h){
+  if(!values.length) return '';
+  var max = Math.max(maxValue || 1, 1);
+  if(maxValue == null) max = Math.max.apply(null, values.concat([1]));
+  return values.map(function(v, i){
+    var x = values.length === 1 ? 0 : (i / (values.length - 1)) * w;
+    var y = h - (Math.max(0, Math.min(v, max)) / max) * (h - 4) - 2;
+    return (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+  }).join(' ');
+}
+function renderSparkSvg(id, seriesList, maxValue){
+  var el = document.getElementById(id);
+  if(!el) return;
+  var box = el.viewBox.baseVal;
+  var w = box && box.width ? box.width : 220;
+  var h = box && box.height ? box.height : 72;
+  var colors = ['var(--accent)', 'var(--purple)', 'var(--green)'];
+  var grid = '<path d="M0 '+(h-1)+' H'+w+' M0 '+(h/2).toFixed(1)+' H'+w+'" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>';
+  var lines = seriesList.map(function(values, i){
+    var d = pathForSeries(values, maxValue, w, h);
+    return d ? '<path d="'+esc(d)+'" fill="none" stroke="'+colors[i % colors.length]+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' : '';
+  }).join('');
+  el.innerHTML = grid + lines;
+}
+function updateHistories(d, cpuPct, ramPct){
+  pushHistory('cpu', cpuPct);
+  pushHistory('ram', ramPct);
+  pushHistory('temp', d.temp || 0);
+  pushHistory('netRx', d.netRx || 0);
+  pushHistory('netTx', d.netTx || 0);
+  pushHistory('diskRd', d.diskRd || 0);
+  pushHistory('diskWt', d.diskWt || 0);
+  pushHistory('load', d.load && d.load.length ? d.load[0] : 0);
+  var plan = d.openai_plan || {};
+  var claude = d.claude_usage || {};
+  pushHistory('aiGpt', plan.primary_window ? plan.primary_window.used_percent || 0 : 0);
+  pushHistory('aiClaude', claude.five_hour_window && claude.five_hour_window.used_percent != null ? claude.five_hour_window.used_percent : 0);
+}
+function seriesMinMax(values){
+  if(!values.length) return {min:0, max:0};
+  return {min:Math.min.apply(null, values), max:Math.max.apply(null, values)};
 }
 function warnClass(kind){
   return kind === 'hit' ? 'hit' : 'warn';
@@ -603,7 +783,7 @@ function renderWarnings(d, fetchError){
   var wdiv = document.getElementById('warnings');
   if(!items.length){
     wdiv.innerHTML = '<div class="warn-empty">No attention items</div>';
-    return;
+    return items;
   }
   wdiv.innerHTML = items.map(function(item){
     return '<div class="warn-item '+warnClass(item.kind)+'">'
@@ -611,6 +791,7 @@ function renderWarnings(d, fetchError){
       +'<span class="warn-text" title="'+esc(item.text)+'">'+esc(item.text)+'</span>'
       +'</div>';
   }).join('');
+  return items;
 }
 function renderDroidStatus(d){
   var ops = d.agent_ops || {};
@@ -703,6 +884,119 @@ function renderServiceHealth(d){
   document.getElementById('node-python').textContent = d.python || '--';
 }
 
+function renderTelemetry(d){
+  var cpu = telemetryHistory.cpu, ram = telemetryHistory.ram, temp = telemetryHistory.temp;
+  var cpuMm = seriesMinMax(cpu), ramMm = seriesMinMax(ram), tempMm = seriesMinMax(temp);
+  document.getElementById('spark-cpu-val').textContent = (cpu[cpu.length-1] || 0).toFixed(0)+'%';
+  document.getElementById('spark-cpu-min').textContent = 'min '+cpuMm.min.toFixed(0)+'%';
+  document.getElementById('spark-cpu-max').textContent = 'max '+cpuMm.max.toFixed(0)+'%';
+  document.getElementById('spark-ram-val').textContent = (ram[ram.length-1] || 0).toFixed(0)+'%';
+  document.getElementById('spark-ram-min').textContent = 'min '+ramMm.min.toFixed(0)+'%';
+  document.getElementById('spark-ram-max').textContent = 'max '+ramMm.max.toFixed(0)+'%';
+  document.getElementById('spark-temp-val').textContent = (temp[temp.length-1] || 0).toFixed(1)+'°C';
+  document.getElementById('spark-temp-min').textContent = 'min '+tempMm.min.toFixed(0)+'°';
+  document.getElementById('spark-temp-max').textContent = 'max '+tempMm.max.toFixed(0)+'°';
+  renderSparkSvg('spark-cpu', [telemetryHistory.cpu], 100);
+  renderSparkSvg('spark-ram', [telemetryHistory.ram], 100);
+  renderSparkSvg('spark-temp', [telemetryHistory.temp], 90);
+
+  var rx = formatSpeed(d.netRx || 0), tx = formatSpeed(d.netTx || 0);
+  document.getElementById('spark-net-val').textContent = '↓ '+rx.v+' '+rx.u+'  ↑ '+tx.v+' '+tx.u;
+  document.getElementById('spark-net-min').textContent = 'rx '+rx.v+' '+rx.u;
+  document.getElementById('spark-net-max').textContent = 'tx '+tx.v+' '+tx.u;
+  renderSparkSvg('spark-net', [telemetryHistory.netRx, telemetryHistory.netTx], null);
+
+  var rd = formatSpeed(d.diskRd || 0), wt = formatSpeed(d.diskWt || 0);
+  document.getElementById('spark-diskio-val').textContent = 'R '+rd.v+' '+rd.u+'  W '+wt.v+' '+wt.u;
+  document.getElementById('spark-diskio-min').textContent = 'read '+rd.v+' '+rd.u;
+  document.getElementById('spark-diskio-max').textContent = 'write '+wt.v+' '+wt.u;
+  renderSparkSvg('spark-diskio', [telemetryHistory.diskRd, telemetryHistory.diskWt], null);
+
+  var gpt = telemetryHistory.aiGpt[telemetryHistory.aiGpt.length-1] || 0;
+  var claude = telemetryHistory.aiClaude[telemetryHistory.aiClaude.length-1] || 0;
+  document.getElementById('spark-ai-val').textContent = 'GPT '+gpt.toFixed(0)+'% / Claude '+claude.toFixed(0)+'%';
+  document.getElementById('spark-ai-min').textContent = 'GPT '+gpt.toFixed(0)+'%';
+  document.getElementById('spark-ai-max').textContent = 'Claude '+claude.toFixed(0)+'%';
+  renderSparkSvg('spark-ai', [telemetryHistory.aiGpt, telemetryHistory.aiClaude], 100);
+
+  var load = d.load || [0,0,0];
+  document.getElementById('spark-load-val').textContent = Number(load[0] || 0).toFixed(2);
+  document.getElementById('spark-load-min').textContent = '1m '+Number(load[0] || 0).toFixed(2);
+  document.getElementById('spark-load-max').textContent = '15m '+Number(load[2] || 0).toFixed(2);
+  renderSparkSvg('spark-load', [telemetryHistory.load], null);
+}
+
+function renderCaptainConsole(d, warnings){
+  var load = d.load || [0,0,0];
+  var rd = formatSpeed(d.diskRd || 0), wt = formatSpeed(d.diskWt || 0);
+  var power = d.power || {};
+  document.getElementById('console-uptime').textContent = formatUptime(d.uptime || 0);
+  document.getElementById('console-load').textContent = load.map(function(v){ return Number(v || 0).toFixed(2); }).join(' ');
+  document.getElementById('console-procs').textContent = String(d.proc_count || 0);
+  document.getElementById('console-threads').textContent = String(d.threads || 0);
+  document.getElementById('console-power').textContent = power.summary || (d.temp ? d.temp.toFixed(1)+'°C' : '--');
+  document.getElementById('console-io').textContent = 'R '+rd.v+rd.u+' / W '+wt.v+wt.u;
+
+  var procs = (d.procs || []).slice(0, 6);
+  var target = document.getElementById('top-procs');
+  if(!procs.length){
+    target.innerHTML = '<div class="warn-empty">No process data</div>';
+  } else {
+    target.innerHTML = procs.map(function(p){
+      return '<div class="proc-row">'
+        +'<span>'+esc(p.pid || '')+'</span>'
+        +'<b title="'+esc(p.name || '')+'">'+esc(p.name || '')+'</b>'
+        +'<span>'+Number(p.cpu || 0).toFixed(0)+'%</span>'
+        +'<span>'+Number(p.mem || 0).toFixed(0)+'%</span>'
+        +'</div>';
+    }).join('');
+  }
+}
+
+function noteAgeLabel(value){
+  if(!value) return '--';
+  var ts = Date.parse(value);
+  if(!isFinite(ts)) return '--';
+  return formatAge((Date.now() - ts) / 1000);
+}
+function renderIntelList(id, items, emptyText){
+  var el = document.getElementById(id);
+  if(!items || !items.length){
+    el.innerHTML = '<div class="warn-empty">'+esc(emptyText)+'</div>';
+    return;
+  }
+  el.innerHTML = items.map(function(item){
+    return '<div class="intel-row">'
+      +'<b title="'+esc(item.name || '')+'">'+esc(item.name || '')+'</b>'
+      +'<span>'+esc(noteAgeLabel(item.updated_at))+'</span>'
+      +'</div>';
+  }).join('');
+}
+function droidMoodLine(warnings, d){
+  var hits = (warnings || []).filter(function(item){ return item.kind === 'hit'; }).length;
+  var ops = d.agent_ops || {};
+  var failed = Object.keys(ops).some(function(name){ return ops[name] && ops[name].state === 'failed'; });
+  if(hits || failed) return 'C-3PO is anxious: '+(warnings[0] ? warnings[0].text : 'critical attention required')+'.';
+  if((warnings || []).length) return 'BD-1 is alert: '+warnings.length+' item'+(warnings.length === 1 ? '' : 's')+' need a look.';
+  return 'EVE reports nominal: systems clear, vault quiet, telemetry stable.';
+}
+function renderVaultIntel(d, warnings){
+  var vault = d.vault_intel || {};
+  document.getElementById('vault-notes').textContent = vault.present ? String(vault.note_count || 0) : 'missing';
+  document.getElementById('vault-size').textContent = vault.present ? formatBytes(vault.vault_size_bytes || 0) : '--';
+  document.getElementById('vault-present').textContent = vault.present ? 'online' : 'not found';
+  document.getElementById('vault-ksp-count').textContent = vault.present ? String((vault.ksp_notes || []).length) : '--';
+  renderIntelList('vault-recent', vault.recent_notes || [], vault.present ? 'No recent notes' : 'Vault not present');
+  renderIntelList('vault-ksp', vault.ksp_notes || [], vault.present ? 'No KSP notes' : 'Vault not present');
+
+  var repo = d.repo_status || {};
+  document.getElementById('repo-branch').textContent = repo.branch || '--';
+  document.getElementById('repo-head').textContent = repo.head || '--';
+  document.getElementById('repo-dirty').textContent = repo.dirty ? (repo.changed_files || 0)+' changed' : 'clean';
+  document.getElementById('repo-sync').textContent = repo.upstream ? ('+'+(repo.ahead || 0)+' / -'+(repo.behind || 0)) : 'local only';
+  document.getElementById('droid-mood').textContent = droidMoodLine(warnings || [], d);
+}
+
 function showPage(idx, manual){
   currentPage = ((idx % pageCount) + pageCount) % pageCount;
   Array.prototype.forEach.call(document.querySelectorAll('.page'), function(page){
@@ -762,6 +1056,7 @@ async function fetchMetrics(){
 
     // ── Resources ────────────────────────────────────
     var mp = d.memory.used/d.memory.total*100;
+    updateHistories(d, cpuPct, mp);
     document.getElementById('ram-val').textContent = mp.toFixed(0)+'%';
     document.getElementById('ram-val').style.color = color(mp);
     document.getElementById('ram-detail').textContent = d.memory.used.toFixed(0)+' MB / '+d.memory.total.toFixed(0)+' MB';
@@ -885,9 +1180,12 @@ async function fetchMetrics(){
     // ── Agent Ops / Attention ───────────────────────
     renderAgentOps(d);
     renderDroidStatus(d);
-    renderWarnings(d, null);
+    var warnings = renderWarnings(d, null);
     renderMissionLog(d);
     renderServiceHealth(d);
+    renderTelemetry(d);
+    renderCaptainConsole(d, warnings);
+    renderVaultIntel(d, warnings);
 
     // ── Model + status ───────────────────────────────
     var modelInfo = d.model_info || {model:d.hermes_model||'', provider:''};
