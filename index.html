@@ -9,6 +9,7 @@
     --void: #0d1117; --deck: #010409; --panel: #161b22; --panel2: #161b22;
     --line: #30363d; --line2: #21262d; --text: #c9d1d9; --muted: #8b949e;
     --faint: #6e7681; --blue: #58a6ff; --cyan: #58a6ff; --violet: #a371f7;
+    --green: #22c55e; --orange: #f59e0b; --red: #ef4444;
     --purple: #a371f7; --magenta: #a371f7; --amber: #d29922; --yellow: #d29922; --ok: #3fb950;
     --void-rgb: 13,17,23; --deck-rgb: 1,4,9; --panel-rgb: 22,27,34;
     --line-rgb: 48,54,61; --blue-rgb: 88,166,255; --cyan-rgb: 88,166,255;
@@ -67,8 +68,8 @@
 
   .main-grid  { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:238px 1fr; gap:6px; height:100%; }
   .cpu-card { grid-column:1; grid-row:1; min-width:0; }
-  .resources-card { grid-column:1; grid-row:2; min-width:0; }
-  .ai-card { grid-column:2; grid-row:1 / span 2; min-width:0; }
+  .ai-card { grid-column:2; grid-row:1; min-width:0; }
+  .core-proc-card { grid-column:1 / span 2; grid-row:2; min-width:0; }
   .bottom-row { display:grid; grid-template-columns:236px 1fr 246px; grid-template-rows:100%; gap:6px; height:100%; }
   .mission-grid { display:grid; grid-template-columns:238px 1fr 238px; grid-template-rows:173px 183px; gap:6px; height:100%; }
   .mission-card { grid-column:2; grid-row:1 / span 2; }
@@ -86,14 +87,15 @@
   .vault-repo-card { grid-column:3; grid-row:1 / span 2; }
 
   /* ── CPU widget ──────────────────────────────────── */
-  .cpu-main { display:flex; align-items:stretch; gap:12px; flex:1; height:100%; }
-  .cpu-gauge { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; flex-shrink:0; width:86px; padding-top:4px; }
+  .cpu-main { display:grid; grid-template-columns:86px minmax(0,1fr); grid-template-rows:minmax(0,1fr) auto; column-gap:12px; row-gap:6px; flex:1; height:100%; min-width:0; }
+  .cpu-gauge { grid-column:1; grid-row:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; flex-shrink:0; width:86px; padding-top:4px; }
   .cpu-gauge svg { display:block; }
   .cpu-gauge-pct { font-size:24px; font-weight:bold; line-height:1; margin-top:2px; }
   .cpu-gauge-label { font-size:10px; color:var(--muted); letter-spacing:2px; margin-top:2px; }
-  .cpu-gauge-chips { display:flex; flex-direction:column; gap:4px; margin-top:6px; width:100%; }
-  .cpu-chip { font-size:11px; padding:2px 6px; border-radius:5px; background:rgba(255,255,255,0.04); border:1px solid var(--line); white-space:nowrap; text-align:center; }
-  .cpu-cores { flex:1; display:flex; flex-direction:column; justify-content:space-between; min-width:0; padding:4px 0 2px; }
+  .cpu-gauge-chips { display:flex; flex-direction:column; gap:5px; margin-top:6px; width:100%; }
+  .cpu-chip { font-size:12px; line-height:1.1; padding:3px 5px; border-radius:5px; background:rgba(255,255,255,0.04); border:1px solid var(--line); white-space:nowrap; text-align:center; }
+  .cpu-detail-stack { display:contents; }
+  .cpu-cores { grid-column:2; grid-row:1; display:flex; flex-direction:column; justify-content:space-between; min-width:0; padding:4px 0 2px; }
   .core-row { display:flex; align-items:center; gap:7px; }
   .core-lbl { font-size:12px; color:var(--muted); width:18px; text-align:right; flex-shrink:0; }
   .core-track { flex:1; height:9px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden; position:relative; }
@@ -113,10 +115,17 @@
   .res-detail { font-size:10px; color:var(--muted); width:78px; text-align:right; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .res-sub { display:flex; gap:9px; font-size:10px; color:var(--muted); padding-left:40px; min-width:0; white-space:nowrap; overflow:hidden; }
   .res-sub b { color:var(--text); font-weight:normal; }
+  .cpu-card .res-body { grid-column:1 / -1; grid-row:2; flex:0 0 auto; justify-content:flex-start; gap:5px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.06); min-width:0; }
+  .cpu-card .res-section { gap:1px; }
+  .cpu-card .res-row { gap:5px; }
+  .cpu-card .res-track { height:8px; }
+  .cpu-card .res-pct { font-size:12px; width:34px; }
+  .cpu-card .res-detail { width:100px; font-size:9px; }
+  .cpu-card .res-sub { display:none; }
 
   /* ── AI usage widget ─────────────────────────────── */
   .ai-usage { display:flex; flex:1; flex-direction:column; min-width:0; gap:6px; }
-  .usage-stack { display:grid; grid-template-rows:105px 105px minmax(0,1fr); gap:6px; flex:1; min-width:0; min-height:0; }
+  .usage-stack { display:grid; grid-template-rows:1fr 1fr; gap:6px; flex:1; min-width:0; min-height:0; }
   .usage-provider { position:relative; display:flex; flex-direction:column; gap:7px; min-width:0; padding:8px; border-radius:8px; border:1px solid var(--line); background:
       rgba(var(--deck-rgb),0.32); overflow:hidden; }
   .usage-provider::before { content:''; position:absolute; inset:0 0 auto 0; height:2px; border-radius:8px 8px 0 0; opacity:0.7; }
@@ -135,7 +144,7 @@
   .provider-pill.hit { color:var(--magenta); border-color:rgba(var(--violet-rgb),0.34); background:rgba(var(--violet-rgb),0.11); }
   .usage-sub { font-size:9px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .usage-window-list { display:flex; flex-direction:column; gap:5px; flex:1; justify-content:center; min-height:0; }
-  .usage-window-row { display:grid; grid-template-columns:22px minmax(0,1fr) 38px 54px; gap:5px; align-items:center; min-width:0; }
+  .usage-window-row { display:grid; grid-template-columns:20px minmax(0,1fr) 34px 66px; gap:4px; align-items:center; min-width:0; }
   .usage-window-tag { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
   .usage-window-track { height:14px; background:rgba(255,255,255,0.05); border-radius:999px; overflow:hidden; position:relative; }
   .usage-window-fill { height:100%; border-radius:999px; transition:width 0.8s ease; position:relative; }
@@ -144,11 +153,11 @@
   .usage-window-meta { font-size:10px; color:var(--muted); text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0; }
   .usage-footer { display:flex; justify-content:space-between; gap:8px; padding-top:2px; border-top:1px solid rgba(255,255,255,0.05); font-size:10px; color:var(--muted); }
   .usage-footer span { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .core-proc-panel { min-height:0; display:flex; flex-direction:column; padding:7px; border:1px solid var(--line); border-radius:8px; background:rgba(var(--deck-rgb),0.32); overflow:hidden; }
-  .core-proc-panel .card-title { margin-bottom:4px; }
-  .core-proc-panel .proc-list { gap:3px; }
-  .core-proc-panel .proc-row { grid-template-columns:34px minmax(0,1fr) 34px 34px; gap:4px; min-height:24px; padding:3px 5px; }
-  .core-proc-panel .proc-head { min-height:18px; }
+  .core-proc-panel { min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+  .core-proc-panel .proc-list { gap:2px; }
+  .core-proc-panel .proc-row { grid-template-columns:42px minmax(0,1fr) 42px 42px; gap:6px; min-height:18px; padding:1px 5px; }
+  .core-proc-panel .proc-head { min-height:16px; }
+  .core-proc-panel .proc-row:not(.proc-head) span:nth-child(n+3) { font-size:12px; font-weight:bold; color:var(--text); }
 
   /* ── Cron widget ─────────────────────────────────── */
   .cron-list { flex:1; display:flex; flex-direction:column; gap:0; overflow:hidden; }
@@ -297,7 +306,7 @@
 
 <div class="pages">
 <section class="page active" data-page="0">
-<!-- MAIN GRID: CPU + Resources + AI Usage -->
+<!-- MAIN GRID: CPU/resources + AI Usage + PROC -->
 <div class="main-grid">
 
   <!-- CPU Card -->
@@ -321,11 +330,41 @@
           <span class="cpu-chip" id="freq-val" style="color:var(--cyan)">CLK --</span>
         </div>
       </div>
-      <div class="cpu-cores">
-        <div class="core-row"><span class="core-lbl">C0</span><div class="core-track"><div class="core-fill" id="cf-0" style="width:0%;background:var(--ok)"></div></div><span class="core-pct" id="cp-0" style="color:var(--ok)">0%</span></div>
-        <div class="core-row"><span class="core-lbl">C1</span><div class="core-track"><div class="core-fill" id="cf-1" style="width:0%;background:var(--ok)"></div></div><span class="core-pct" id="cp-1" style="color:var(--ok)">0%</span></div>
-        <div class="core-row"><span class="core-lbl">C2</span><div class="core-track"><div class="core-fill" id="cf-2" style="width:0%;background:var(--ok)"></div></div><span class="core-pct" id="cp-2" style="color:var(--ok)">0%</span></div>
-        <div class="core-row"><span class="core-lbl">C3</span><div class="core-track"><div class="core-fill" id="cf-3" style="width:0%;background:var(--ok)"></div></div><span class="core-pct" id="cp-3" style="color:var(--ok)">0%</span></div>
+      <div class="cpu-detail-stack">
+        <div class="cpu-cores">
+          <div class="core-row"><span class="core-lbl">C0</span><div class="core-track"><div class="core-fill" id="cf-0" style="width:0%;background:var(--ok)"></div></div><span class="core-pct" id="cp-0" style="color:var(--ok)">0%</span></div>
+          <div class="core-row"><span class="core-lbl">C1</span><div class="core-track"><div class="core-fill" id="cf-1" style="width:0%;background:var(--ok)"></div></div><span class="core-pct" id="cp-1" style="color:var(--ok)">0%</span></div>
+          <div class="core-row"><span class="core-lbl">C2</span><div class="core-track"><div class="core-fill" id="cf-2" style="width:0%;background:var(--ok)"></div></div><span class="core-pct" id="cp-2" style="color:var(--ok)">0%</span></div>
+          <div class="core-row"><span class="core-lbl">C3</span><div class="core-track"><div class="core-fill" id="cf-3" style="width:0%;background:var(--ok)"></div></div><span class="core-pct" id="cp-3" style="color:var(--ok)">0%</span></div>
+        </div>
+        <div class="res-body">
+          <div class="res-section">
+            <div class="res-row">
+              <span class="res-lbl-left">RAM</span>
+              <div class="res-track"><div class="res-fill" id="ram-bar" style="width:0%;background:var(--ok)"></div></div>
+              <span class="res-pct" id="ram-val" style="color:var(--ok)">--%</span>
+              <span class="res-detail" id="ram-detail">-- / --</span>
+            </div>
+            <div class="res-sub">
+              <span>Free <b id="ram-free">--</b></span>
+              <span>Swap <b id="swap-used-val">--</b></span>
+              <span>Up <b id="uptime-val">--</b></span>
+            </div>
+          </div>
+          <div class="res-section">
+            <div class="res-row">
+              <span class="res-lbl-left">DISK</span>
+              <div class="res-track"><div class="res-fill" id="disk-bar" style="width:0%;background:var(--ok)"></div></div>
+              <span class="res-pct" id="disk-val" style="color:var(--ok)">--%</span>
+              <span class="res-detail" id="disk-detail">-- / --</span>
+            </div>
+            <div class="res-sub">
+              <span>Free <b id="disk-free">--</b></span>
+              <span>↓ <b id="net-rx-inline">--</b></span>
+              <span>↑ <b id="net-tx-inline">--</b></span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -394,44 +433,13 @@
             <span id="claude-project">Project --</span>
           </div>
         </div>
-        <div class="core-proc-panel">
-          <div class="card-title">PROC</div>
-          <div class="proc-list" id="core-top-procs"></div>
-        </div>
       </div>
     </div>
   </div>
 
-  <!-- Resources Card -->
-  <div class="card resources-card">
-    <div class="res-body">
-      <div class="res-section">
-        <div class="res-row">
-          <span class="res-lbl-left">RAM</span>
-          <div class="res-track"><div class="res-fill" id="ram-bar" style="width:0%;background:var(--ok)"></div></div>
-          <span class="res-pct" id="ram-val" style="color:var(--ok)">--%</span>
-          <span class="res-detail" id="ram-detail">-- / --</span>
-        </div>
-        <div class="res-sub">
-          <span>Free <b id="ram-free">--</b></span>
-          <span>Swap <b id="swap-used-val">--</b></span>
-          <span>Up <b id="uptime-val">--</b></span>
-        </div>
-      </div>
-      <div class="res-section">
-        <div class="res-row">
-          <span class="res-lbl-left">DISK</span>
-          <div class="res-track"><div class="res-fill" id="disk-bar" style="width:0%;background:var(--ok)"></div></div>
-          <span class="res-pct" id="disk-val" style="color:var(--ok)">--%</span>
-          <span class="res-detail" id="disk-detail">-- / --</span>
-        </div>
-        <div class="res-sub">
-          <span>Free <b id="disk-free">--</b></span>
-          <span>↓ <b id="net-rx-inline">--</b></span>
-          <span>↑ <b id="net-tx-inline">--</b></span>
-        </div>
-      </div>
-    </div>
+  <!-- PROC Card -->
+  <div class="card core-proc-card core-proc-panel" style="flex-direction:column;">
+    <div class="proc-list" id="core-top-procs"></div>
   </div>
 
 </div>
@@ -621,7 +629,7 @@ var pageCount = 5;
 var historyLimit = 90;
 var telemetryHistory = {cpu:[], ram:[], temp:[], netRx:[], netTx:[], diskRd:[], diskWt:[], aiGpt:[], aiClaude:[], load:[]};
 
-function color(p) { return p<50?'var(--ok)':p<80?'var(--amber)':'var(--magenta)'; }
+function color(p) { return p<50?'var(--green)':p<80?'var(--orange)':'var(--red)'; }
 function tempColor(t) { return t<60?'var(--ok)':t<75?'var(--amber)':'var(--magenta)'; }
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch) {
@@ -993,8 +1001,8 @@ function renderCaptainConsole(d, warnings){
   document.getElementById('console-power').textContent = power.summary || (d.temp ? d.temp.toFixed(1)+'°C' : '--');
   document.getElementById('console-io').textContent = 'R '+rd.v+rd.u+' / W '+wt.v+wt.u;
 
-  var procs = (d.procs || []).slice(0, 6);
-  renderProcessList('core-top-procs', procs.slice(0, 4));
+  var procs = (d.procs || []).slice(0, 7);
+  renderProcessList('core-top-procs', procs.slice(0, 6));
   renderProcessList('mission-top-procs', procs.slice(0, 4));
 }
 
@@ -1006,7 +1014,7 @@ function renderProcessList(id, procs){
   } else {
     target.innerHTML = '<div class="proc-row proc-head"><span>PID</span><b>CMD</b><span>CPU</span><span>RAM</span></div>'
       + procs.map(function(p){
-      var procName = truncateText(p.name || '', id === 'core-top-procs' ? 20 : 22);
+      var procName = truncateText(p.name || '', id === 'core-top-procs' ? 64 : 22);
       return '<div class="proc-row">'
         +'<span>'+esc(p.pid || '')+'</span>'
         +'<b title="'+esc(p.name || '')+'">'+esc(procName)+'</b>'
