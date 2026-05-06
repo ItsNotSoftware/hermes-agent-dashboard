@@ -71,6 +71,11 @@
   .ai-card { grid-column:2; grid-row:1; min-width:0; }
   .core-proc-card { grid-column:1 / span 2; grid-row:2; min-width:0; }
   .bottom-row { display:grid; grid-template-columns:236px 1fr 246px; grid-template-rows:100%; gap:6px; height:100%; }
+  .droids-grid { display:grid; grid-template-columns:248px minmax(0,1fr) 226px; grid-template-rows:124px 1fr; gap:6px; height:100%; }
+  .droid-fleet-card { grid-column:1; grid-row:1 / span 2; min-width:0; }
+  .droid-command-card { grid-column:2 / span 2; grid-row:1; min-width:0; }
+  .droid-cron-card { grid-column:2; grid-row:2; min-width:0; }
+  .droid-attn-card { grid-column:3; grid-row:2; min-width:0; }
   .mission-grid { display:grid; grid-template-columns:238px 1fr 238px; grid-template-rows:173px 183px; gap:6px; height:100%; }
   .mission-card { grid-column:2; grid-row:1 / span 2; }
   .service-card { grid-column:1; grid-row:1; }
@@ -172,9 +177,19 @@
   .cron-badge { font-size:10px; padding:1px 5px; border-radius:3px; font-weight:normal; flex-shrink:0; }
   .cron-badge.active { background:rgba(var(--ok-rgb),0.12); color:var(--ok); }
   .cron-badge.paused { background:rgba(var(--amber-rgb),0.12); color:var(--amber); }
+  .cron-badge.failed { background:rgba(var(--violet-rgb),0.12); color:var(--violet); }
   .cron-owner { font-size:10px; padding:1px 4px; border-radius:3px; font-weight:normal; flex-shrink:0; color:var(--cyan); background:rgba(var(--cyan-rgb),0.10); border:1px solid rgba(var(--cyan-rgb),0.20); }
   .cron-meta { font-size:12px; color:var(--muted); margin-top:1px; }
   .cron-status { font-size:12px; flex-shrink:0; }
+  .droid-cron-card .cron-list { gap:3px; }
+  .droid-cron-card .cron-item { display:grid; grid-template-columns:3px 42px minmax(0,1fr) 50px; gap:7px; align-items:center; min-height:38px; padding:4px 0; }
+  .droid-cron-card .cron-strip { height:28px; }
+  .cron-when { font-size:11px; color:var(--cyan); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cron-main { min-width:0; }
+  .cron-subline { display:flex; gap:7px; min-width:0; margin-top:2px; font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; }
+  .cron-subline span { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .cron-state-cell { display:flex; flex-direction:column; align-items:flex-end; gap:3px; min-width:0; }
+  .cron-last { font-size:10px; color:var(--muted); max-width:50px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   /* ── Agent Ops / Attention widget ───────────────── */
   .ops-panel { flex:1; min-height:0; display:grid; grid-template-rows:58px 1fr; gap:7px; overflow:hidden; }
@@ -198,6 +213,9 @@
   .warn-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; }
   .warn-text { font-size:11px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .warn-empty { font-size:12px; color:var(--ok); padding-top:14px; text-align:center; }
+  .droid-attn-card .warn-box { flex:1; border-top:0; padding-top:0; }
+  .droid-attn-card .warn-item { grid-template-columns:42px 1fr; }
+  .droid-attn-card .warn-empty { padding-top:48px; }
 
   /* ── Droid status visual ────────────────────────── */
   .droid-stage { flex:1; display:grid; grid-template-rows:1fr 64px; gap:8px; min-height:0; }
@@ -220,6 +238,37 @@
   .droid-stat { border:1px solid var(--line); border-radius:6px; padding:6px; background:rgba(0,0,0,0.12); min-width:0; }
   .droid-stat b { display:block; font-size:16px; line-height:1; color:var(--text); }
   .droid-stat span { display:block; margin-top:4px; font-size:9px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-transform:uppercase; letter-spacing:1px; }
+  .droid-roster { flex:1; min-height:0; display:grid; grid-template-rows:1fr 1fr; gap:7px; }
+  .droid-unit { min-height:0; display:grid; grid-template-columns:58px minmax(0,1fr); grid-template-rows:auto auto 1fr; column-gap:8px; row-gap:5px; padding:8px; border:1px solid var(--line); border-radius:7px; background:rgba(var(--deck-rgb),0.24); overflow:hidden; position:relative; }
+  .droid-unit::before { content:''; position:absolute; inset:0 0 auto 0; height:2px; background:var(--ok); opacity:.75; }
+  .droid-unit.failed::before { background:var(--violet); }
+  .droid-unit.paused::before, .droid-unit.idle::before { background:var(--amber); }
+  .droid-avatar { grid-column:1; grid-row:1 / span 3; width:58px; height:86px; align-self:center; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.08); border-radius:7px; background:radial-gradient(circle at 50% 25%, rgba(var(--cyan-rgb),.10), rgba(var(--deck-rgb),.24)); overflow:hidden; }
+  .droid-avatar svg { width:50px; height:76px; overflow:visible; }
+  .droid-avatar .antenna { transform-origin:50% 42%; animation:droidNod 3.4s ease-in-out infinite; }
+  .droid-avatar .eye { animation:droidBlink 4s ease-in-out infinite; }
+  .droid-avatar.eve .core { animation:eveFloat 3.8s ease-in-out infinite; }
+  .droid-unit.failed .droid-avatar { border-color:rgba(var(--violet-rgb),0.46); }
+  .droid-unit.paused .droid-avatar, .droid-unit.idle .droid-avatar { border-color:rgba(var(--amber-rgb),0.44); }
+  .droid-unit.ok .droid-avatar { border-color:rgba(var(--ok-rgb),0.34); }
+  .droid-unit-head { min-width:0; display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .droid-unit-name { font-size:13px; font-weight:bold; color:var(--text); letter-spacing:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .droid-unit-meta { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; min-width:0; }
+  .droid-metric { min-width:0; border:1px solid rgba(255,255,255,0.06); border-radius:5px; padding:3px 4px; background:rgba(255,255,255,0.025); }
+  .droid-metric b { display:block; font-size:13px; line-height:1; color:var(--text); }
+  .droid-metric span { display:block; margin-top:2px; font-size:8px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .droid-next { min-width:0; align-self:end; padding-top:4px; border-top:1px solid rgba(255,255,255,0.06); font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .droid-next b { color:var(--cyan); font-weight:normal; }
+  .command-deck { flex:1; min-height:0; display:grid; grid-template-columns:repeat(4,1fr) 126px; gap:7px; align-items:stretch; }
+  .deck-kpi { min-width:0; border:1px solid var(--line); border-radius:7px; padding:8px; background:rgba(var(--deck-rgb),0.24); display:flex; flex-direction:column; justify-content:space-between; }
+  .deck-kpi b { font-size:24px; line-height:1; color:var(--text); letter-spacing:.4px; }
+  .deck-kpi span { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .deck-kpi.good b { color:var(--ok); }
+  .deck-kpi.warn b { color:var(--amber); }
+  .deck-kpi.hit b { color:var(--violet); }
+  .deck-health { min-width:0; display:flex; flex-direction:column; justify-content:space-between; border:1px solid rgba(var(--blue-rgb),0.24); border-radius:7px; padding:8px; background:rgba(var(--blue-rgb),0.06); }
+  .deck-health .agent-pill { align-self:flex-start; }
+  .deck-health-line { font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   /* ── Mission / services ─────────────────────────── */
   .mission-list { flex:1; min-height:0; display:flex; flex-direction:column; gap:5px; overflow:hidden; }
@@ -446,66 +495,37 @@
 
 </section>
 <section class="page" data-page="1">
-<!-- BOTTOM ROW -->
-<div class="bottom-row">
+<div class="droids-grid">
 
-  <!-- Droid Status -->
-  <div class="card" style="flex-direction:column;">
-    <div class="card-title">🤖 DROID STATUS</div>
-    <div class="droid-stage">
-      <div class="droid-art">
-        <div class="droid c3po idle" id="droid-c3po">
-          <svg viewBox="0 0 100 140" aria-hidden="true">
-            <g class="antenna">
-              <circle cx="50" cy="22" r="19" fill="var(--amber)" stroke="var(--text)" stroke-width="3"/>
-              <rect x="38" y="38" width="24" height="10" rx="4" fill="var(--ok)"/>
-              <circle class="eye" cx="42" cy="20" r="4" fill="var(--deck)"/>
-              <circle class="eye" cx="58" cy="20" r="4" fill="var(--deck)"/>
-              <path d="M40 30 H60" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/>
-            </g>
-            <rect x="30" y="50" width="40" height="45" rx="12" fill="var(--amber)" stroke="var(--text)" stroke-width="3"/>
-            <path d="M39 60 H61 M37 72 H63 M41 84 H59" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/>
-            <path d="M30 58 L16 78 M70 58 L84 78" stroke="var(--amber)" stroke-width="8" stroke-linecap="round"/>
-            <path d="M39 95 L34 126 M61 95 L66 126" stroke="var(--amber)" stroke-width="9" stroke-linecap="round"/>
-          </svg>
-          <div class="droid-caption"><b>C-3PO</b><span id="c3po-state">idle</span></div>
-        </div>
-        <div class="droid eve idle" id="droid-eve">
-          <svg viewBox="0 0 100 140" aria-hidden="true">
-            <g class="core">
-              <path d="M50 15 C74 15 84 39 78 64 C73 88 62 111 50 127 C38 111 27 88 22 64 C16 39 26 15 50 15Z" fill="var(--panel)" stroke="var(--blue)" stroke-width="4"/>
-              <ellipse cx="50" cy="42" rx="24" ry="14" fill="var(--deck)" stroke="var(--text)" stroke-width="2"/>
-              <ellipse class="eye" cx="41" cy="42" rx="7" ry="4" fill="var(--blue)"/>
-              <ellipse class="eye" cx="59" cy="42" rx="7" ry="4" fill="var(--blue)"/>
-              <path d="M34 77 C42 85 58 85 66 77" fill="none" stroke="var(--text)" stroke-width="3" stroke-linecap="round"/>
-              <path d="M25 65 L11 85 M75 65 L89 85" stroke="var(--blue)" stroke-width="7" stroke-linecap="round"/>
-            </g>
-          </svg>
-          <div class="droid-caption"><b>EVE</b><span id="eve-state">idle</span></div>
-        </div>
-      </div>
-      <div class="droid-feed">
-        <div class="droid-stat"><b id="droid-jobs">0</b><span>total jobs</span></div>
-        <div class="droid-stat"><b id="droid-alerts">0</b><span>agent alerts</span></div>
+  <div class="card droid-fleet-card" style="flex-direction:column;">
+    <div class="card-title">DROID ROSTER</div>
+    <div class="droid-roster" id="agent-ops"></div>
+  </div>
+
+  <div class="card droid-command-card" style="flex-direction:column;">
+    <div class="card-title">COMMAND DECK</div>
+    <div class="command-deck">
+      <div class="deck-kpi good"><b id="droid-jobs">0</b><span>Total Jobs</span></div>
+      <div class="deck-kpi warn"><b id="droid-paused">0</b><span>Paused</span></div>
+      <div class="deck-kpi hit"><b id="droid-failed">0</b><span>Failed</span></div>
+      <div class="deck-kpi hit"><b id="droid-alerts">0</b><span>Alerts</span></div>
+      <div class="deck-health">
+        <span class="agent-pill idle" id="droid-deck-state">idle</span>
+        <div class="deck-health-line" id="droid-health-fresh">fresh --</div>
+        <div class="deck-health-line" id="droid-health-sources">sources --</div>
       </div>
     </div>
   </div>
 
-  <!-- Cron Jobs -->
-  <div class="card" style="flex-direction:column;">
-    <div class="card-title">⏱ CRON JOBS</div>
+  <div class="card droid-cron-card" style="flex-direction:column;">
+    <div class="card-title">CRON SCHEDULE</div>
     <div class="cron-list" id="cron-jobs"></div>
   </div>
 
-  <!-- Agent Ops / Attention -->
-  <div class="card" style="flex-direction:column;">
-    <div class="card-title">⚙️ AGENT OPS</div>
-    <div class="ops-panel">
-      <div class="agent-grid" id="agent-ops"></div>
-      <div class="warn-box">
-        <div class="warn-title"><span>Attention</span><span id="warn-count">0</span></div>
-        <div class="warn-list" id="warnings"></div>
-      </div>
+  <div class="card droid-attn-card" style="flex-direction:column;">
+    <div class="card-title">ATTENTION <span id="warn-count">0</span></div>
+    <div class="warn-box">
+      <div class="warn-list" id="warnings"></div>
     </div>
   </div>
 
@@ -870,27 +890,51 @@ function renderDroidStatus(d){
     if(label) label.textContent = state;
   });
   var totalJobs = Number(c3po.job_count || 0) + Number(eve.job_count || 0);
-  var alerts = Number(c3po.paused_count || 0) + Number(c3po.failed_count || 0)
-    + Number(eve.paused_count || 0) + Number(eve.failed_count || 0);
+  var paused = Number(c3po.paused_count || 0) + Number(eve.paused_count || 0);
+  var failed = Number(c3po.failed_count || 0) + Number(eve.failed_count || 0);
+  var alerts = paused + failed;
   document.getElementById('droid-jobs').textContent = String(totalJobs);
   document.getElementById('droid-alerts').textContent = String(alerts);
+  var pausedEl = document.getElementById('droid-paused');
+  if(pausedEl) pausedEl.textContent = String(paused);
+  var failedEl = document.getElementById('droid-failed');
+  if(failedEl) failedEl.textContent = String(failed);
+
+  var deckState = failed ? 'failed' : (paused ? 'paused' : (totalJobs ? 'ok' : 'idle'));
+  var deckStateEl = document.getElementById('droid-deck-state');
+  if(deckStateEl){
+    deckStateEl.className = 'agent-pill ' + agentStateClass(deckState);
+    deckStateEl.textContent = compactStatus(deckState);
+  }
+  var hermes = (d.service_health && d.service_health.hermes_cron) || {};
+  var freshEl = document.getElementById('droid-health-fresh');
+  if(freshEl) freshEl.textContent = 'fresh ' + formatAge(hermes.freshness_seconds);
+  var sources = hermes.sources || [];
+  var sourceEl = document.getElementById('droid-health-sources');
+  if(sourceEl) sourceEl.textContent = 'sources ' + sources.filter(function(src){ return src && src.exists; }).length + '/' + sources.length;
 }
 function renderAgentOps(d){
   var ops = d.agent_ops || {};
   var names = ['C-3PO', 'EVE'];
   var html = names.map(function(name){
     var a = ops[name] || {name:name, state:'idle', job_count:0, paused_count:0, failed_count:0};
-    var state = a.state || 'idle';
+    var state = agentStateClass(a.state || 'idle');
     var next = a.next_job;
-    var nextText = next ? ((next.next_run || 'N/A')+' '+(next.name || 'Unnamed')) : 'No active job';
-    var alertText = [];
-    if(a.failed_count) alertText.push(a.failed_count+' failed');
-    if(a.paused_count) alertText.push(a.paused_count+' paused');
-    return '<div class="agent-box">'
-      +'<div class="agent-top"><span class="agent-name">'+esc(a.name || name)+'</span>'
-      +'<span class="agent-pill '+agentStateClass(state)+'">'+esc(state)+'</span></div>'
-      +'<div class="agent-meta"><span>'+Number(a.job_count || 0)+' jobs</span><span>'+esc(alertText.join(' / ') || 'clear')+'</span></div>'
-      +'<div class="agent-next" title="'+esc(nextText)+'"><b>Next</b> '+esc(truncateText(nextText, 26))+'</div>'
+    var nextText = next ? ((next.next_run || 'N/A') + ' ' + (next.name || 'Unnamed')) : 'No active job';
+    var key = name === 'C-3PO' ? 'c3po' : 'eve';
+    var avatar = key === 'c3po'
+      ? '<div class="droid-avatar c3po" aria-hidden="true"><svg viewBox="0 0 100 140"><g class="antenna"><circle cx="50" cy="22" r="19" fill="var(--amber)" stroke="var(--text)" stroke-width="3"/><rect x="38" y="38" width="24" height="10" rx="4" fill="var(--ok)"/><circle class="eye" cx="42" cy="20" r="4" fill="var(--deck)"/><circle class="eye" cx="58" cy="20" r="4" fill="var(--deck)"/><path d="M40 30 H60" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/></g><rect x="30" y="50" width="40" height="45" rx="12" fill="var(--amber)" stroke="var(--text)" stroke-width="3"/><path d="M39 60 H61 M37 72 H63 M41 84 H59" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/><path d="M30 58 L16 78 M70 58 L84 78" stroke="var(--amber)" stroke-width="8" stroke-linecap="round"/><path d="M39 95 L34 126 M61 95 L66 126" stroke="var(--amber)" stroke-width="9" stroke-linecap="round"/></svg></div>'
+      : '<div class="droid-avatar eve" aria-hidden="true"><svg viewBox="0 0 100 140"><g class="core"><path d="M50 15 C74 15 84 39 78 64 C73 88 62 111 50 127 C38 111 27 88 22 64 C16 39 26 15 50 15Z" fill="var(--panel)" stroke="var(--blue)" stroke-width="4"/><ellipse cx="50" cy="42" rx="24" ry="14" fill="var(--deck)" stroke="var(--text)" stroke-width="2"/><ellipse class="eye" cx="41" cy="42" rx="7" ry="4" fill="var(--blue)"/><ellipse class="eye" cx="59" cy="42" rx="7" ry="4" fill="var(--blue)"/><path d="M34 77 C42 85 58 85 66 77" fill="none" stroke="var(--text)" stroke-width="3" stroke-linecap="round"/><path d="M25 65 L11 85 M75 65 L89 85" stroke="var(--blue)" stroke-width="7" stroke-linecap="round"/></g></svg></div>';
+    return '<div class="droid-unit '+state+'" id="droid-'+key+'">'
+      +avatar
+      +'<div class="droid-unit-head"><span class="droid-unit-name">'+esc(a.name || name)+'</span>'
+      +'<span class="agent-pill '+state+'" id="'+key+'-state">'+esc(compactStatus(state))+'</span></div>'
+      +'<div class="droid-unit-meta">'
+      +'<div class="droid-metric"><b>'+Number(a.job_count || 0)+'</b><span>jobs</span></div>'
+      +'<div class="droid-metric"><b>'+Number(a.paused_count || 0)+'</b><span>paused</span></div>'
+      +'<div class="droid-metric"><b>'+Number(a.failed_count || 0)+'</b><span>failed</span></div>'
+      +'</div>'
+      +'<div class="droid-next" title="'+esc(nextText)+'"><b>Next</b> '+esc(truncateText(nextText, 30))+'</div>'
       +'</div>';
   }).join('');
   document.getElementById('agent-ops').innerHTML = html;
@@ -1223,23 +1267,23 @@ async function fetchMetrics(){
     // ── Cron jobs ────────────────────────────────────
     var cdiv=document.getElementById('cron-jobs'); cdiv.innerHTML='';
     if(d.crons && d.crons.length){
-      d.crons.forEach(function(c){
+      cdiv.innerHTML = d.crons.slice(0, 7).map(function(c){
         var state=(c.state||'active')==='paused'?'paused':'active';
-        var owner=esc(truncateText(c.owner||c.profile||'', 8));
-        var ownerBadge=owner?'<span class="cron-owner">'+owner+'</span>':'';
-        var statusDot=c.last_status==='ok'
-          ?'<span style="color:var(--ok);font-size:11px;">✓</span>'
-          :c.last_status
-            ?'<span style="color:var(--magenta);font-size:11px;">✗</span>'
-            :'';
-        cdiv.innerHTML+='<div class="cron-item">'
+        var owner=c.owner||c.profile||'';
+        var ownerBadge=owner?'<span class="cron-owner">'+esc(truncateText(owner, 8))+'</span>':'';
+        var statusText=c.last_status==='ok'?'OK':(c.last_status?String(c.last_status):'--');
+        var statusClass=c.last_status && c.last_status !== 'ok' ? 'failed' : state;
+        var lastText=c.last_run ? ('last '+c.last_run) : 'not run';
+        return '<div class="cron-item">'
           +'<div class="cron-strip '+state+'"></div>'
-          +'<div class="cron-body">'
-          +'<div class="cron-name">'+statusDot+ownerBadge+'<span class="cron-name-text" title="'+esc(c.name||'Unnamed')+'">'+esc(truncateText(c.name||'Unnamed', 34))+'</span>'
-          +'<span class="cron-badge '+state+'">'+esc(compactStatus(state))+'</span></div>'
-          +'<div class="cron-meta">'+esc(c.next_run||'N/A')+'</div>'
-          +'</div></div>';
-      });
+          +'<div class="cron-when" title="'+esc(c.next_run || 'N/A')+'">'+esc(c.next_run || 'N/A')+'</div>'
+          +'<div class="cron-main">'
+          +'<div class="cron-name">'+ownerBadge+'<span class="cron-name-text" title="'+esc(c.name||'Unnamed')+'">'+esc(truncateText(c.name||'Unnamed', 30))+'</span></div>'
+          +'<div class="cron-subline"><span title="'+esc(c.schedule || '')+'">'+esc(truncateText(c.schedule || 'schedule --', 24))+'</span><span title="'+esc(lastText)+'">'+esc(truncateText(lastText, 22))+'</span></div>'
+          +'</div>'
+          +'<div class="cron-state-cell"><span class="cron-badge '+statusClass+'">'+esc(compactStatus(statusText))+'</span><span class="cron-last">'+esc(compactStatus(state))+'</span></div>'
+          +'</div>';
+      }).join('');
     } else {
       cdiv.innerHTML='<div style="color:var(--muted);font-size:10px;padding-top:8px;">No jobs scheduled</div>';
     }
