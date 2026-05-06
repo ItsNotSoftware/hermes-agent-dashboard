@@ -76,12 +76,13 @@
   .droid-command-card { grid-column:2 / span 2; grid-row:1; min-width:0; }
   .droid-cron-card { grid-column:2; grid-row:2; min-width:0; }
   .droid-attn-card { grid-column:3; grid-row:2; min-width:0; }
-  .mission-grid { display:grid; grid-template-columns:238px 1fr 238px; grid-template-rows:173px 183px; gap:6px; height:100%; }
-  .mission-card { grid-column:2; grid-row:1 / span 2; }
-  .service-card { grid-column:1; grid-row:1; }
-  .identity-card { grid-column:1; grid-row:2; }
-  .captain-card { grid-column:3; grid-row:1; }
-  .proc-card { grid-column:3; grid-row:2; }
+  .mission-grid { display:grid; grid-template-columns:246px minmax(0,1fr) 226px; grid-template-rows:76px 160px minmax(0,1fr); gap:6px; height:100%; }
+  .mission-card { grid-column:2; grid-row:2 / span 2; min-width:0; }
+  .service-card { grid-column:1 / span 3; grid-row:1; min-width:0; }
+  .identity-card { grid-column:1; grid-row:3; min-width:0; }
+  .captain-card { grid-column:1; grid-row:2; min-width:0; }
+  .context-card { grid-column:3; grid-row:2; min-width:0; }
+  .proc-card { grid-column:3; grid-row:3; min-width:0; }
   .telemetry-grid { display:grid; grid-template-columns:1fr 1fr 1fr; grid-template-rows:116px 116px 112px; gap:6px; height:100%; }
   .spark-card { flex-direction:column; min-width:0; }
   .spark-wide { grid-column:span 2; }
@@ -271,27 +272,43 @@
   .deck-health-line { font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   /* ── Mission / services ─────────────────────────── */
-  .mission-list { flex:1; min-height:0; display:flex; flex-direction:column; gap:5px; overflow:hidden; }
-  .mission-item { display:grid; grid-template-columns:50px 1fr; gap:8px; align-items:start; padding:6px 7px; border-left:3px solid var(--ok); border-radius:5px; background:rgba(255,255,255,0.025); min-height:41px; }
+  .mission-list { flex:1; min-height:0; display:flex; flex-direction:column; gap:4px; overflow:hidden; }
+  .mission-item { display:grid; grid-template-columns:44px minmax(0,1fr); gap:7px; align-items:start; padding:4px 6px; border-left:3px solid var(--ok); border-radius:5px; background:rgba(255,255,255,0.025); min-height:37px; }
   .mission-item.warn { border-left-color:var(--amber); background:rgba(var(--amber-rgb),0.08); }
   .mission-item.critical { border-left-color:var(--magenta); background:rgba(var(--violet-rgb),0.10); }
-  .mission-time { font-size:10px; color:var(--muted); white-space:nowrap; }
+  .mission-time { font-size:10px; color:var(--muted); white-space:nowrap; padding-top:1px; }
   .mission-body { min-width:0; }
-  .mission-title { font-size:12px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mission-title { min-width:0; display:flex; align-items:center; gap:5px; font-size:12px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mission-title-text { min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .mission-detail { font-size:10px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .mission-label { color:var(--cyan); text-transform:uppercase; letter-spacing:1px; }
-  .service-list { flex:1; display:flex; flex-direction:column; gap:7px; min-height:0; }
-  .service-row { display:grid; grid-template-columns:76px 1fr 56px; gap:6px; align-items:center; padding:6px; border:1px solid rgba(255,255,255,0.06); border-radius:6px; background:rgba(255,255,255,0.025); min-width:0; }
+  .mission-label { flex:0 0 auto; max-width:44px; padding:1px 4px; border-radius:4px; color:var(--cyan); background:rgba(var(--cyan-rgb),0.08); border:1px solid rgba(var(--cyan-rgb),0.18); text-transform:uppercase; letter-spacing:.7px; overflow:hidden; text-overflow:ellipsis; }
+  .service-list { flex:1; display:grid; grid-template-columns:repeat(4,1fr); gap:6px; min-height:0; }
+  .service-row { display:grid; grid-template-columns:50px minmax(0,1fr) 44px; gap:5px; align-items:center; padding:5px 6px; border:1px solid rgba(255,255,255,0.06); border-radius:6px; background:rgba(255,255,255,0.025); min-width:0; }
   .service-name { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; white-space:nowrap; }
   .service-value { font-size:12px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .service-pill { font-size:10px; text-align:center; text-transform:uppercase; letter-spacing:.5px; border-radius:999px; padding:2px 4px; border:1px solid var(--line); color:var(--muted); }
   .service-pill.ok { color:var(--ok); border-color:rgba(var(--ok-rgb),0.26); background:rgba(var(--ok-rgb),0.08); }
   .service-pill.warn { color:var(--amber); border-color:rgba(var(--amber-rgb),0.26); background:rgba(var(--amber-rgb),0.08); }
   .service-pill.critical { color:var(--magenta); border-color:rgba(var(--violet-rgb),0.28); background:rgba(var(--violet-rgb),0.10); }
-  .identity-grid { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:6px; align-items:center; }
-  .identity-box { min-width:0; }
+  .identity-grid { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:5px; align-content:start; }
+  .identity-box { min-width:0; padding:5px 6px; border:1px solid rgba(255,255,255,0.05); border-radius:5px; background:rgba(255,255,255,0.02); }
   .identity-box span { display:block; color:var(--muted); font-size:9px; text-transform:uppercase; letter-spacing:1px; }
   .identity-box b { display:block; margin-top:3px; font-size:11px; font-weight:normal; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .captain-card .kv-grid { gap:4px; }
+  .captain-card .kv { padding:4px 6px; }
+  .captain-card .kv span { font-size:8px; }
+  .captain-card .kv b { margin-top:2px; font-size:11px; }
+  .context-list { flex:1; min-height:0; display:flex; flex-direction:column; gap:5px; overflow:hidden; }
+  .context-line { display:grid; grid-template-columns:48px minmax(0,1fr); gap:6px; align-items:center; min-height:23px; padding:4px 6px; border-radius:5px; background:rgba(255,255,255,0.025); border-left:3px solid rgba(var(--blue-rgb),0.52); }
+  .context-line.warn { border-left-color:var(--amber); background:rgba(var(--amber-rgb),0.08); }
+  .context-line.critical { border-left-color:var(--magenta); background:rgba(var(--violet-rgb),0.10); }
+  .context-label { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .context-text { min-width:0; font-size:11px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .proc-card .proc-list { gap:3px; }
+  .proc-card .proc-row { grid-template-columns:34px minmax(0,1fr) 34px 34px; gap:4px; min-height:22px; padding:2px 5px; }
+  .proc-card .proc-row span { font-size:10px; }
+  .proc-card .proc-row b { font-size:11px; }
+  .proc-card .proc-head { min-height:17px; }
 
   /* ── Telemetry / console / intel ────────────────── */
   .spark-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:5px; }
@@ -561,6 +578,10 @@
         <div class="kv"><span>Thermal</span><b id="console-power">--</b></div>
         <div class="kv"><span>I/O</span><b id="console-io">--</b></div>
       </div>
+    </div>
+    <div class="card context-card" style="flex-direction:column;">
+      <div class="card-title">CURRENT CONTEXT</div>
+      <div class="context-list" id="mission-context"></div>
     </div>
     <div class="card proc-card" style="flex-direction:column;">
       <div class="card-title">PROC</div>
@@ -942,7 +963,7 @@ function renderAgentOps(d){
 
 function renderMissionLog(d){
   var list = document.getElementById('mission-log');
-  var items = d.mission_log || [];
+  var items = (d.mission_log || []).slice(0, 7);
   if(!items.length){
     list.innerHTML = '<div class="warn-empty">No recent mission events</div>';
     return;
@@ -950,12 +971,12 @@ function renderMissionLog(d){
   list.innerHTML = items.map(function(item){
     var sev = severityClass(item.severity);
     var title = (item.label ? item.label + ' - ' : '') + (item.title || 'Event');
-    var shortTitle = truncateText(item.title || 'Event', 34);
-    var shortDetail = truncateText(item.detail || '', 56);
+    var shortTitle = truncateText(item.title || 'Event', 42);
+    var shortDetail = truncateText(item.detail || '', 62);
     return '<div class="mission-item '+sev+'">'
       +'<div class="mission-time">'+esc(item.time || '--')+'</div>'
       +'<div class="mission-body">'
-      +'<div class="mission-title" title="'+esc(title)+'"><span class="mission-label">'+esc(truncateText(item.label || 'SYS', 5))+'</span> '+esc(shortTitle)+'</div>'
+      +'<div class="mission-title" title="'+esc(title)+'"><span class="mission-label">'+esc(truncateText(item.label || 'SYS', 5))+'</span><span class="mission-title-text">'+esc(shortTitle)+'</span></div>'
       +'<div class="mission-detail" title="'+esc(item.detail || '')+'">'+esc(shortDetail)+'</div>'
       +'</div></div>';
   }).join('');
@@ -973,11 +994,13 @@ function renderServiceHealth(d){
   var health = d.service_health || {};
   var hermes = health.hermes_cron || {};
   var internet = health.internet || {};
+  var sources = hermes.sources || [];
+  var presentSources = sources.filter(function(src){ return src && src.exists; }).length;
   var rows = [
-    {name:'API', value:'port '+((health.dashboard_backend && health.dashboard_backend.port) || '9200'), status:'ok'},
-    {name:'Hermes', value:'fresh '+formatAge(hermes.freshness_seconds), status:hermes.status === 'ok' ? 'ok' : 'warn'},
+    {name:'API', value:'port '+((health.dashboard_backend && health.dashboard_backend.port) || '9200'), status:(health.dashboard_backend && health.dashboard_backend.status) || 'ok'},
+    {name:'Cron', value:'fresh '+formatAge(hermes.freshness_seconds), status:hermes.status === 'ok' ? 'ok' : 'warn'},
     {name:'Net', value:internet.latency_ms != null ? internet.latency_ms.toFixed(0)+' ms' : 'unreach', status:internet.reachable ? 'ok' : 'critical'},
-    {name:'IP', value:health.local_ip || '--', status:health.local_ip ? 'ok' : 'warn'}
+    {name:'Src', value:presentSources+'/'+sources.length+' files', status:presentSources ? 'ok' : 'warn'}
   ];
   document.getElementById('service-health').innerHTML = rows.map(function(row){
     return '<div class="service-row">'
@@ -986,10 +1009,18 @@ function renderServiceHealth(d){
       +'<span class="service-pill '+severityClass(row.status)+'">'+esc(compactStatus(row.status))+'</span>'
       +'</div>';
   }).join('');
-  document.getElementById('node-host').textContent = d.hostname || '--';
-  document.getElementById('node-ip').textContent = health.local_ip || '--';
-  document.getElementById('node-kernel').textContent = d.kernel || '--';
-  document.getElementById('node-python').textContent = d.python || '--';
+  setTextAndTitle('node-host', d.hostname || '--');
+  setTextAndTitle('node-ip', health.local_ip || '--');
+  setTextAndTitle('node-kernel', d.kernel || '--');
+  setTextAndTitle('node-python', d.python || '--');
+}
+
+function setTextAndTitle(id, value){
+  var el = document.getElementById(id);
+  if(!el) return;
+  var text = String(value == null ? '--' : value);
+  el.textContent = text;
+  el.title = text;
 }
 
 function renderTelemetry(d){
@@ -1038,16 +1069,61 @@ function renderCaptainConsole(d, warnings){
   var load = d.load || [0,0,0];
   var rd = formatSpeed(d.diskRd || 0), wt = formatSpeed(d.diskWt || 0);
   var power = d.power || {};
-  document.getElementById('console-uptime').textContent = formatUptime(d.uptime || 0);
-  document.getElementById('console-load').textContent = load.map(function(v){ return Number(v || 0).toFixed(2); }).join(' ');
-  document.getElementById('console-procs').textContent = String(d.proc_count || 0);
-  document.getElementById('console-threads').textContent = String(d.threads || 0);
-  document.getElementById('console-power').textContent = power.summary || (d.temp ? d.temp.toFixed(1)+'°C' : '--');
-  document.getElementById('console-io').textContent = 'R '+rd.v+rd.u+' / W '+wt.v+wt.u;
+  setTextAndTitle('console-uptime', formatUptime(d.uptime || 0));
+  setTextAndTitle('console-load', load.map(function(v){ return Number(v || 0).toFixed(2); }).join(' '));
+  setTextAndTitle('console-procs', String(d.proc_count || 0));
+  setTextAndTitle('console-threads', String(d.threads || 0));
+  setTextAndTitle('console-power', power.summary || (d.temp ? d.temp.toFixed(1)+'°C' : '--'));
+  setTextAndTitle('console-io', 'R '+rd.v+rd.u+' / W '+wt.v+wt.u);
 
   var procs = (d.procs || []).slice(0, 7);
   renderProcessList('core-top-procs', procs.slice(0, 6));
-  renderProcessList('mission-top-procs', procs.slice(0, 4));
+  renderProcessList('mission-top-procs', procs.slice(0, 3));
+  renderMissionContext(d, warnings || []);
+}
+
+function planSummary(plan){
+  if(!plan) return {text:'OpenAI --', status:'warn'};
+  var win = plan.primary_window || {};
+  var used = win.used_percent == null ? null : Number(win.used_percent || 0);
+  var pctText = used == null ? '--' : used.toFixed(0)+'%';
+  return {
+    text:'OpenAI '+pctText+' rst '+formatCountdown(win.reset_after_seconds || 0),
+    status:plan.limit_reached ? 'critical' : (plan.allowed ? 'ok' : 'warn')
+  };
+}
+function claudeSummary(claude){
+  if(!claude) return {text:'Claude --', status:'warn'};
+  var win = claude.five_hour_window || {};
+  var isApiSource = claude.usage_source === 'api';
+  var used = isApiSource && win.used_percent != null ? Number(win.used_percent || 0).toFixed(0)+'%' : formatTokenCount(win.total_tokens || 0);
+  return {
+    text:'Claude '+used+' '+truncateText(shortPath(claude.project_path || ''), 15),
+    status:isApiSource ? 'ok' : 'warn'
+  };
+}
+function renderMissionContext(d, warnings){
+  var target = document.getElementById('mission-context');
+  if(!target) return;
+  var plan = planSummary(d.openai_plan);
+  var claude = claudeSummary(d.claude_usage);
+  var modelText = formatModelLabel(d.model_info || {model:d.hermes_model || ''}) || '--';
+  var alert = warnings.length
+    ? {label:warnings[0].label || 'Warn', text:warnings[0].text || 'Attention required', status:warnings[0].kind === 'hit' ? 'critical' : 'warn'}
+    : {label:'Warn', text:'No current warnings', status:'ok'};
+  var rows = [
+    {label:'AI', text:truncateText(modelText, 26), status:'ok'},
+    {label:'GPT', text:plan.text, status:plan.status},
+    {label:'Claude', text:claude.text, status:claude.status},
+    alert
+  ];
+  target.innerHTML = rows.map(function(row){
+    var status = severityClass(row.status);
+    return '<div class="context-line '+status+'">'
+      +'<span class="context-label">'+esc(truncateText(row.label, 7))+'</span>'
+      +'<span class="context-text" title="'+esc(row.text)+'">'+esc(truncateText(row.text, 31))+'</span>'
+      +'</div>';
+  }).join('');
 }
 
 function renderProcessList(id, procs){
