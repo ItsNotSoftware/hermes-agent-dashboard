@@ -11,6 +11,9 @@ import (
 	"fyne.io/fyne/v2/container"
 )
 
+// ColBlue is the default card accent colour (same blue as the CSS --blue var).
+var ColBlue = color.RGBA{0x58, 0xa6, 0xff, 0xff}
+
 // Palette colors needed across widgets are pinned here so the widgets
 // package does not import the parent ui package (avoids an import cycle).
 var (
@@ -30,19 +33,45 @@ var (
 
 // Card wraps content in a bordered rounded panel with an optional title.
 func Card(title string, content fyne.CanvasObject) fyne.CanvasObject {
+	return CardAccented(title, color.RGBA{0x58, 0xa6, 0xff, 0xb8}, content)
+}
+
+// CardAccented is like Card but draws a 2 px coloured accent line at the top.
+func CardAccented(title string, accent color.Color, content fyne.CanvasObject) fyne.CanvasObject {
 	bg := canvas.NewRectangle(ColPanel)
 	bg.StrokeColor = ColLine
 	bg.StrokeWidth = 1
 	bg.CornerRadius = 6
 
+	accentRect := canvas.NewRectangle(accent)
+	accentRect.CornerRadius = 3
+
 	body := content
 	if title != "" {
 		t := canvas.NewText(strings.ToUpper(title), ColMuted)
 		t.TextStyle = fyne.TextStyle{Monospace: true, Bold: true}
-		t.TextSize = 10
+		t.TextSize = 11
 		body = container.NewBorder(t, nil, nil, nil, content)
 	}
-	return container.NewStack(bg, container.NewPadded(body))
+	inner := container.NewBorder(
+		container.New(accentBarLayout{2}, accentRect),
+		nil, nil, nil,
+		container.NewPadded(body),
+	)
+	return container.NewStack(bg, inner)
+}
+
+// accentBarLayout forces its single child to a fixed height, full width.
+type accentBarLayout struct{ h float32 }
+
+func (a accentBarLayout) Layout(objs []fyne.CanvasObject, size fyne.Size) {
+	for _, o := range objs {
+		o.Resize(fyne.NewSize(size.Width, a.h))
+		o.Move(fyne.NewPos(0, 0))
+	}
+}
+func (a accentBarLayout) MinSize(_ []fyne.CanvasObject) fyne.Size {
+	return fyne.NewSize(0, a.h)
 }
 
 // SeverityColor maps a severity label to a foreground color used by the

@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+
 // Bar is a thin horizontal progress bar with rounded corners. The fill
 // width is value*size.Width. The bar itself is a fixed thin strip; place
 // labels above/below using normal containers.
@@ -41,12 +42,15 @@ func (b *Bar) CreateRenderer() fyne.WidgetRenderer {
 	track.CornerRadius = b.thickness / 2
 	fg := canvas.NewRectangle(b.color)
 	fg.CornerRadius = b.thickness / 2
-	return &barRenderer{bar: b, track: track, fg: fg}
+	hl := canvas.NewRectangle(color.RGBA{0xff, 0xff, 0xff, 0x28})
+	hl.CornerRadius = b.thickness / 2
+	return &barRenderer{bar: b, track: track, fg: fg, hl: hl}
 }
 
 type barRenderer struct {
-	bar         *Bar
-	track, fg   *canvas.Rectangle
+	bar        *Bar
+	track, fg  *canvas.Rectangle
+	hl         *canvas.Rectangle // top-edge highlight
 }
 
 func (r *barRenderer) Layout(size fyne.Size) {
@@ -59,11 +63,14 @@ func (r *barRenderer) Layout(size fyne.Size) {
 	r.track.Move(fyne.NewPos(0, y))
 	w := size.Width * float32(r.bar.value)
 	if w < h {
-		// keep a rounded pill even at near-zero values
 		w = 0
 	}
 	r.fg.Resize(fyne.NewSize(w, h))
 	r.fg.Move(fyne.NewPos(0, y))
+	// highlight covers the top half of the fill
+	hlH := h / 2
+	r.hl.Resize(fyne.NewSize(w, hlH))
+	r.hl.Move(fyne.NewPos(0, y))
 }
 
 func (r *barRenderer) MinSize() fyne.Size { return r.bar.MinSize() }
@@ -72,7 +79,10 @@ func (r *barRenderer) Refresh() {
 	r.fg.FillColor = r.bar.color
 	r.track.Refresh()
 	r.fg.Refresh()
+	r.hl.Refresh()
 	r.Layout(r.bar.Size())
 }
-func (r *barRenderer) Objects() []fyne.CanvasObject { return []fyne.CanvasObject{r.track, r.fg} }
-func (r *barRenderer) Destroy()                     {}
+func (r *barRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.track, r.fg, r.hl}
+}
+func (r *barRenderer) Destroy() {}

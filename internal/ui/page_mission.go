@@ -31,25 +31,25 @@ func (p *missionPage) Title() string { return "Mission" }
 
 func (p *missionPage) Build() fyne.CanvasObject {
 	p.log = container.NewVBox()
-	p.service = widgets.Label("—", widgets.ColText, 11, false)
-	p.host = widgets.Label("—", widgets.ColText, 12, true)
-	p.ip = widgets.Label("—", widgets.ColText, 12, true)
-	p.kernel = widgets.Label("—", widgets.ColMuted, 10, false)
-	p.py = widgets.Label("—", widgets.ColMuted, 10, false)
+	p.service = widgets.Label("—", widgets.ColText, 12, false)
+	p.host = widgets.Label("—", widgets.ColText, 13, true)
+	p.ip = widgets.Label("—", widgets.ColText, 13, true)
+	p.kernel = widgets.Label("—", widgets.ColMuted, 11, false)
+	p.py = widgets.Label("—", widgets.ColMuted, 11, false)
 
-	p.uptime = widgets.Label("—", widgets.ColText, 11, false)
-	p.load = widgets.Label("—", widgets.ColText, 11, false)
-	p.procs = widgets.Label("—", widgets.ColText, 11, false)
-	p.threads = widgets.Label("—", widgets.ColText, 11, false)
-	p.thermal = widgets.Label("—", widgets.ColText, 11, false)
-	p.io = widgets.Label("—", widgets.ColText, 11, false)
-	p.repo = widgets.Label("—", widgets.ColMuted, 10, false)
+	p.uptime = widgets.Label("—", widgets.ColText, 12, false)
+	p.load = widgets.Label("—", widgets.ColText, 12, false)
+	p.procs = widgets.Label("—", widgets.ColText, 12, false)
+	p.threads = widgets.Label("—", widgets.ColText, 12, false)
+	p.thermal = widgets.Label("—", widgets.ColText, 12, false)
+	p.io = widgets.Label("—", widgets.ColText, 12, false)
+	p.repo = widgets.Label("—", widgets.ColMuted, 11, false)
 
 	p.procList = container.NewVBox()
 
 	nodeCard := widgets.Card("NODE", container.NewVBox(
-		container.NewHBox(widgets.Label("HOST", widgets.ColMuted, 9, true), p.host),
-		container.NewHBox(widgets.Label("IP  ", widgets.ColMuted, 9, true), p.ip),
+		container.NewHBox(widgets.Label("HOST", widgets.ColMuted, 10, true), p.host),
+		container.NewHBox(widgets.Label("IP  ", widgets.ColMuted, 10, true), p.ip),
 		p.kernel, p.py, p.repo,
 	))
 	consoleCard := widgets.Card("CAPTAIN CONSOLE", container.NewVBox(
@@ -68,7 +68,7 @@ func (p *missionPage) Build() fyne.CanvasObject {
 }
 
 func kv(label string, val *canvas.Text) fyne.CanvasObject {
-	return container.NewHBox(widgets.Label(label, widgets.ColMuted, 9, true), val)
+	return container.NewHBox(widgets.Label(label, widgets.ColMuted, 10, true), val)
 }
 
 func (p *missionPage) Update(snap store.Snapshot) {
@@ -77,7 +77,7 @@ func (p *missionPage) Update(snap store.Snapshot) {
 		p.log.Add(warningRow(ev))
 	}
 	if len(snap.MissionLog) == 0 {
-		p.log.Add(widgets.Label("no recent events", widgets.ColFaint, 11, false))
+		p.log.Add(widgets.Label("no recent events", widgets.ColFaint, 12, false))
 	}
 	p.log.Refresh()
 

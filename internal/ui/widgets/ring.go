@@ -57,7 +57,7 @@ func (r *Ring) render(w, h int) image.Image {
 	}
 	cx := float64(w) / 2
 	cy := float64(h) / 2
-	radius := math.Min(cx, cy) - 1
+	radius := math.Min(cx, cy) - 1.5
 	thick := radius * r.thickness
 	if thick < 2 {
 		thick = 2
@@ -68,17 +68,19 @@ func (r *Ring) render(w, h int) image.Image {
 	}
 
 	sweep := r.value * 2 * math.Pi
-	// Start at -π/2 (12 o'clock), increase clockwise: angles use atan2 with
-	// y inverted so "12 o'clock" is angle 0 after a transform.
+
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
 			dx := float64(x) - cx + 0.5
 			dy := float64(y) - cy + 0.5
 			dist := math.Sqrt(dx*dx + dy*dy)
+
+			// Skip pixels clearly outside the ring band.
 			if dist > radius+1 || dist < innerR-1 {
 				continue
 			}
-			// Smooth edges of the ring band.
+
+			// Sub-pixel alpha for smooth edges — strictly within the band.
 			alpha := 1.0
 			if dist > radius {
 				alpha = radius + 1 - dist

@@ -129,7 +129,7 @@ func (s *Store) recomputeDerivedLocked() {
 func (s *Store) Start(ctx context.Context) {
 	s.refreshFast()
 	s.refreshCrons()
-	go s.tick(ctx, 2*time.Second, s.refreshFast)
+	go s.tick(ctx, 1*time.Second, s.refreshFast)
 	go s.tick(ctx, 5*time.Second, s.refreshCrons)
 	go s.tick(ctx, 10*time.Second, s.refreshRepo)
 	go s.tick(ctx, 30*time.Second, s.refreshHealth)

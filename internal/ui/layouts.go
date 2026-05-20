@@ -38,6 +38,41 @@ func (l rowsLayout) MinSize(objs []fyne.CanvasObject) fyne.Size {
 	return fyne.NewSize(w, h)
 }
 
+// bottomFixed: 2 children — first fills all available space, second is pinned
+// at the bottom using its own MinSize height. More reliable than NewBorder for
+// this pattern because it never produces negative heights.
+type bottomFixed struct{ gap float32 }
+
+func (l bottomFixed) Layout(objs []fyne.CanvasObject, size fyne.Size) {
+	if len(objs) < 2 {
+		return
+	}
+	bh := objs[1].MinSize().Height
+	y2 := size.Height - bh
+	if y2 < 0 {
+		y2 = 0
+		bh = size.Height
+	}
+	th := y2 - l.gap
+	if th < 0 {
+		th = 0
+	}
+	objs[0].Resize(fyne.NewSize(size.Width, th))
+	objs[0].Move(fyne.NewPos(0, 0))
+	objs[1].Resize(fyne.NewSize(size.Width, bh))
+	objs[1].Move(fyne.NewPos(0, y2))
+}
+func (l bottomFixed) MinSize(objs []fyne.CanvasObject) fyne.Size {
+	if len(objs) < 2 {
+		return fyne.NewSize(0, 0)
+	}
+	w := objs[0].MinSize().Width
+	if w2 := objs[1].MinSize().Width; w2 > w {
+		w = w2
+	}
+	return fyne.NewSize(w, objs[0].MinSize().Height+l.gap+objs[1].MinSize().Height)
+}
+
 // leftColLayout: 2 children — left child gets a fixed width, right child fills.
 type leftColLayout struct{ leftW, gap float32 }
 

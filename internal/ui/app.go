@@ -135,20 +135,22 @@ func (a *App) applySnapshot(snap store.Snapshot) {
 func (a *App) buildHeaderRow() fyne.CanvasObject {
 	a.headerTitle = canvas.NewText("HERMES // RPi DASHBOARD", Palette.Cyan)
 	a.headerTitle.TextStyle = fyne.TextStyle{Monospace: true, Bold: true}
-	a.headerTitle.TextSize = 14
+	a.headerTitle.TextSize = 15
 
 	a.clockText = canvas.NewText("--:--:--", Palette.Text)
 	a.clockText.Alignment = fyne.TextAlignCenter
 	a.clockText.TextStyle = fyne.TextStyle{Monospace: true, Bold: true}
-	a.clockText.TextSize = 16
+	a.clockText.TextSize = 18
 
 	a.modelTag = widget.NewLabel("—")
 	a.modelTag.TextStyle = fyne.TextStyle{Monospace: true}
 	a.modelTag.Alignment = fyne.TextAlignTrailing
 
+	quit := newQuitBtn(func() { fyne.Do(a.fyne.Quit) })
+
 	row := container.NewBorder(nil, nil,
 		container.NewHBox(a.headerTitle),
-		container.NewHBox(a.modelTag),
+		container.NewHBox(a.modelTag, quit),
 		container.NewCenter(a.clockText),
 	)
 	return panelWrap(row, 32)
@@ -282,7 +284,7 @@ func (t *pageTab) CreateRenderer() fyne.WidgetRenderer {
 	txt := canvas.NewText(t.label, Palette.Muted)
 	txt.Alignment = fyne.TextAlignCenter
 	txt.TextStyle = fyne.TextStyle{Monospace: true, Bold: true}
-	txt.TextSize = 11
+	txt.TextSize = 12
 	dot := canvas.NewCircle(Palette.Faint)
 	r := &tabRenderer{tab: t, bg: bg, txt: txt, dot: dot}
 	r.apply()
@@ -324,3 +326,49 @@ func (r *tabRenderer) MinSize() fyne.Size              { return fyne.NewSize(80,
 func (r *tabRenderer) Refresh()                        { r.apply(); r.bg.Refresh(); r.txt.Refresh(); r.dot.Refresh() }
 func (r *tabRenderer) Objects() []fyne.CanvasObject    { return []fyne.CanvasObject{r.bg, r.dot, r.txt} }
 func (r *tabRenderer) Destroy()                        {}
+
+// quitBtn is a small ✕ button for the header bar.
+type quitBtn struct {
+	widget.BaseWidget
+	onTap func()
+}
+
+func newQuitBtn(onTap func()) *quitBtn {
+	b := &quitBtn{onTap: onTap}
+	b.ExtendBaseWidget(b)
+	return b
+}
+
+func (b *quitBtn) Tapped(_ *fyne.PointEvent) {
+	if b.onTap != nil {
+		b.onTap()
+	}
+}
+
+func (b *quitBtn) CreateRenderer() fyne.WidgetRenderer {
+	bg := canvas.NewRectangle(color.RGBA{0x3a, 0x10, 0x10, 0xff})
+	bg.StrokeColor = color.RGBA{0xef, 0x44, 0x44, 0x55}
+	bg.StrokeWidth = 1
+	bg.CornerRadius = 5
+	txt := canvas.NewText("✕", color.RGBA{0xef, 0x44, 0x44, 0xcc})
+	txt.Alignment = fyne.TextAlignCenter
+	txt.TextStyle = fyne.TextStyle{Bold: true}
+	txt.TextSize = 14
+	return &quitRenderer{bg: bg, txt: txt}
+}
+
+type quitRenderer struct {
+	bg  *canvas.Rectangle
+	txt *canvas.Text
+}
+
+func (r *quitRenderer) Layout(size fyne.Size) {
+	r.bg.Resize(size)
+	r.bg.Move(fyne.NewPos(0, 0))
+	r.txt.Resize(size)
+	r.txt.Move(fyne.NewPos(0, (size.Height-r.txt.MinSize().Height)/2))
+}
+func (r *quitRenderer) MinSize() fyne.Size              { return fyne.NewSize(26, 22) }
+func (r *quitRenderer) Refresh()                        { r.bg.Refresh(); r.txt.Refresh() }
+func (r *quitRenderer) Objects() []fyne.CanvasObject    { return []fyne.CanvasObject{r.bg, r.txt} }
+func (r *quitRenderer) Destroy()                        {}

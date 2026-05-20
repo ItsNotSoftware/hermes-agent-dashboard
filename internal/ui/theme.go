@@ -96,15 +96,15 @@ func (t *dashboardTheme) Size(name fyne.ThemeSizeName) float32 {
 	case theme.SizeNameInnerPadding:
 		return 4
 	case theme.SizeNameInlineIcon:
-		return 14
+		return 15
 	case theme.SizeNameText:
-		return 12
+		return 13
 	case theme.SizeNameCaptionText:
-		return 10
+		return 11
 	case theme.SizeNameSubHeadingText:
-		return 14
+		return 15
 	case theme.SizeNameHeadingText:
-		return 16
+		return 18
 	case theme.SizeNameSeparatorThickness:
 		return 1
 	case theme.SizeNameInputBorder:

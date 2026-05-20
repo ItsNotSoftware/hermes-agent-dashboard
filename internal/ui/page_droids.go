@@ -32,10 +32,10 @@ func (p *droidsPage) Build() fyne.CanvasObject {
 	p.roster = container.NewVBox()
 	p.cron = container.NewVBox()
 	p.warnings = container.NewVBox()
-	p.kpiJobs = widgets.Label("0", widgets.ColCyan, 22, true)
-	p.kpiPaused = widgets.Label("0", widgets.ColAmber, 22, true)
-	p.kpiFailed = widgets.Label("0", widgets.ColRed, 22, true)
-	p.deckState = widgets.Label("idle", widgets.ColMuted, 11, true)
+	p.kpiJobs = widgets.Label("0", widgets.ColCyan, 24, true)
+	p.kpiPaused = widgets.Label("0", widgets.ColAmber, 24, true)
+	p.kpiFailed = widgets.Label("0", widgets.ColRed, 24, true)
+	p.deckState = widgets.Label("idle", widgets.ColMuted, 12, true)
 
 	kpiRow := container.New(equalGrid(3, 6),
 		kpi("TOTAL", p.kpiJobs), kpi("PAUSED", p.kpiPaused), kpi("FAILED", p.kpiFailed))
@@ -53,7 +53,7 @@ func (p *droidsPage) Build() fyne.CanvasObject {
 }
 
 func kpi(label string, value *canvas.Text) fyne.CanvasObject {
-	lab := widgets.Label(label, widgets.ColMuted, 9, true)
+	lab := widgets.Label(label, widgets.ColMuted, 10, true)
 	return container.NewVBox(value, lab)
 }
 
@@ -96,7 +96,7 @@ func (p *droidsPage) Update(snap store.Snapshot) {
 		p.roster.Add(rosterRow(snap.AgentOps[n]))
 	}
 	if len(names) == 0 {
-		p.roster.Add(widgets.Label("no droids configured", widgets.ColFaint, 11, false))
+		p.roster.Add(widgets.Label("no droids configured", widgets.ColFaint, 12, false))
 	}
 
 	p.cron.Objects = nil
@@ -104,7 +104,7 @@ func (p *droidsPage) Update(snap store.Snapshot) {
 		p.cron.Add(cronRow(c.Name, c.Schedule, c.NextRun, c.Owner, c.State))
 	}
 	if len(snap.Crons) == 0 {
-		p.cron.Add(widgets.Label("no jobs scheduled", widgets.ColFaint, 11, false))
+		p.cron.Add(widgets.Label("no jobs scheduled", widgets.ColFaint, 12, false))
 	}
 
 	p.warnings.Objects = nil
@@ -115,7 +115,7 @@ func (p *droidsPage) Update(snap store.Snapshot) {
 		p.warnings.Add(warningRow(ev))
 	}
 	if len(p.warnings.Objects) == 0 {
-		p.warnings.Add(widgets.Label("no alerts", widgets.ColFaint, 11, false))
+		p.warnings.Add(widgets.Label("no alerts", widgets.ColFaint, 12, false))
 	}
 
 	p.roster.Refresh()
@@ -134,7 +134,7 @@ func rosterRow(ops derive.AgentOps) fyne.CanvasObject {
 	}
 	return container.NewVBox(
 		container.NewHBox(name, state, jobs),
-		widgets.Label(next, widgets.ColMuted, 10, false),
+		widgets.Label(next, widgets.ColMuted, 11, false),
 	)
 }
 
@@ -143,7 +143,7 @@ func cronRow(name, schedule, next, owner, state string) fyne.CanvasObject {
 	if state == "paused" {
 		col = widgets.ColAmber
 	}
-	title := widgets.Label(name, col, 11, true)
+	title := widgets.Label(name, col, 12, true)
 	sub := widgets.Label(
 		fmt.Sprintf("%s · %s · next %s", strings.ToUpper(owner), schedule, next),
 		widgets.ColMuted, 10, false)
@@ -152,7 +152,7 @@ func cronRow(name, schedule, next, owner, state string) fyne.CanvasObject {
 
 func warningRow(ev derive.MissionEvent) fyne.CanvasObject {
 	label := widgets.Label(ev.Label, widgets.SeverityColor(ev.Severity), 10, true)
-	title := widgets.Label(ev.Title, widgets.ColText, 11, true)
-	detail := widgets.Label(ev.Detail, widgets.ColMuted, 10, false)
+	title := widgets.Label(ev.Title, widgets.ColText, 12, true)
+	detail := widgets.Label(ev.Detail, widgets.ColMuted, 11, false)
 	return container.NewVBox(container.NewHBox(label, title), detail)
 }
