@@ -93,13 +93,11 @@ func (p *corePage) Build() fyne.CanvasObject {
 	p.cpuPct = blbl("--%", widgets.ColOK, 19)
 	p.tempChip = lbl("--°", widgets.ColOK, 12)
 	p.freqChip = lbl("--G", widgets.ColCyan, 12)
-	cpuLbl := lbl("CPU", widgets.ColMuted, 10)
 
 	gaugeStack := container.NewStack(p.cpuRing, container.NewCenter(p.cpuPct))
 	chipRow := container.New(equalGrid(2, 3), chipBadge(p.tempChip), chipBadge(p.freqChip))
 	gaugeCol := container.NewVBox(
 		gaugeStack,
-		container.NewCenter(cpuLbl),
 		chipRow,
 	)
 
@@ -173,7 +171,7 @@ func (p *corePage) Build() fyne.CanvasObject {
 	aiContent := container.New(rowsLayout{rows: 2, gap: 6}, gptPanel, clPanel)
 
 	// ── Proc table ─────────────────────────────────────────
-	procLayout := quadColLayout{38, 38, 38, 5}
+	procLayout := quadColLayout{38, 38, 38, 10}
 	headPID := lbl("PID", widgets.ColMuted, 11)
 	headCmd := lbl("CMD", widgets.ColMuted, 11)
 	headCPU := lbl("CPU", widgets.ColMuted, 11)
@@ -337,7 +335,7 @@ func (p *corePage) Update(snap store.Snapshot) {
 			p.procName[r].Text = truncName(pr.Name, 16)
 			p.procCPU[r].Text = fmt.Sprintf("%.1f%%", pr.CPU)
 			p.procCPU[r].Color = pctColor(pr.CPU)
-			p.procMem[r].Text = fmt.Sprintf("%.1f%%", pr.Mem)
+			p.procMem[r].Text = humanMem(pr.MemKB)
 		} else {
 			p.procPID[r].Text = "--"
 			p.procName[r].Text = "--"
@@ -429,4 +427,15 @@ func truncName(s string, n int) string {
 		return s
 	}
 	return string(runes[:n-1]) + "…"
+}
+
+func humanMem(kb int64) string {
+	switch {
+	case kb >= 1024*1024:
+		return fmt.Sprintf("%.1fG", float64(kb)/1024/1024)
+	case kb >= 1024:
+		return fmt.Sprintf("%.0fM", float64(kb)/1024)
+	default:
+		return fmt.Sprintf("%dK", kb)
+	}
 }

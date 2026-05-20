@@ -39,11 +39,12 @@ type Power struct {
 }
 
 type Proc struct {
-	Name string  `json:"name"`
-	CPU  float64 `json:"cpu"`
-	Mem  float64 `json:"mem"`
-	PID  string  `json:"pid"`
-	User string  `json:"user"`
+	Name  string  `json:"name"`
+	CPU   float64 `json:"cpu"`
+	Mem   float64 `json:"mem"`
+	MemKB int64   `json:"mem_kb"`
+	PID   string  `json:"pid"`
+	User  string  `json:"user"`
 }
 
 // Sampler holds the state needed for rate-based metrics (CPU%, net B/s, disk B/s).
@@ -426,11 +427,12 @@ func TopProcs(n int) []Proc {
 		}
 		cpu, _ := strconv.ParseFloat(parts[2], 64)
 		mem, _ := strconv.ParseFloat(parts[3], 64)
+		memKB, _ := strconv.ParseInt(strings.TrimSpace(parts[5]), 10, 64)
 		user := parts[0]
 		if len(user) > 8 {
 			user = user[:8]
 		}
-		procs = append(procs, Proc{Name: name, CPU: cpu, Mem: mem, PID: parts[1], User: user})
+		procs = append(procs, Proc{Name: name, CPU: cpu, Mem: mem, MemKB: memKB, PID: parts[1], User: user})
 		if len(procs) >= n {
 			break
 		}

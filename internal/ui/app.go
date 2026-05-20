@@ -346,14 +346,14 @@ func (b *quitBtn) Tapped(_ *fyne.PointEvent) {
 }
 
 func (b *quitBtn) CreateRenderer() fyne.WidgetRenderer {
-	bg := canvas.NewRectangle(color.RGBA{0x3a, 0x10, 0x10, 0xff})
-	bg.StrokeColor = color.RGBA{0xef, 0x44, 0x44, 0x55}
+	bg := canvas.NewRectangle(color.RGBA{0x2c, 0x0d, 0x0d, 0xff})
+	bg.StrokeColor = color.RGBA{0xef, 0x44, 0x44, 0xaa}
 	bg.StrokeWidth = 1
-	bg.CornerRadius = 5
-	txt := canvas.NewText("✕", color.RGBA{0xef, 0x44, 0x44, 0xcc})
+	bg.CornerRadius = 7
+	txt := canvas.NewText("✕", color.RGBA{0xff, 0x66, 0x66, 0xff})
 	txt.Alignment = fyne.TextAlignCenter
 	txt.TextStyle = fyne.TextStyle{Bold: true}
-	txt.TextSize = 14
+	txt.TextSize = 15
 	return &quitRenderer{bg: bg, txt: txt}
 }
 
@@ -368,7 +368,7 @@ func (r *quitRenderer) Layout(size fyne.Size) {
 	r.txt.Resize(size)
 	r.txt.Move(fyne.NewPos(0, (size.Height-r.txt.MinSize().Height)/2))
 }
-func (r *quitRenderer) MinSize() fyne.Size              { return fyne.NewSize(26, 22) }
+func (r *quitRenderer) MinSize() fyne.Size              { return fyne.NewSize(28, 24) }
 func (r *quitRenderer) Refresh()                        { r.bg.Refresh(); r.txt.Refresh() }
 func (r *quitRenderer) Objects() []fyne.CanvasObject    { return []fyne.CanvasObject{r.bg, r.txt} }
 func (r *quitRenderer) Destroy()                        {}
