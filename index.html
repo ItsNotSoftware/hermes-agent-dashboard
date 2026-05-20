@@ -6,46 +6,100 @@
 <title>RPi Dashboard</title>
 <style>
   :root {
-    --bg: #0a0e17; --card: #111827; --border: #1e293b;
-    --text: #e2e8f0; --dim: #64748b; --accent: #38bdf8;
-    --green: #22c55e; --orange: #f59e0b; --red: #ef4444; --purple: #a78bfa; --cyan: #06b6d4;
+    --void: #0d1117; --deck: #010409; --panel: #161b22; --panel2: #161b22;
+    --line: #30363d; --line2: #21262d; --text: #c9d1d9; --muted: #8b949e;
+    --faint: #6e7681; --blue: #58a6ff; --cyan: #58a6ff; --violet: #a371f7;
+    --green: #22c55e; --orange: #f59e0b; --red: #ef4444;
+    --purple: #a371f7; --magenta: #a371f7; --amber: #d29922; --yellow: #d29922; --ok: #3fb950;
+    --void-rgb: 13,17,23; --deck-rgb: 1,4,9; --panel-rgb: 22,27,34;
+    --line-rgb: 48,54,61; --blue-rgb: 88,166,255; --cyan-rgb: 88,166,255;
+    --violet-rgb: 163,113,247; --amber-rgb: 210,153,34; --ok-rgb: 63,185,80;
+    --shadow: rgba(1, 4, 9, 0.32); --alert: var(--amber); --severe: var(--purple);
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--bg); color:var(--text); font-family:'JetBrains Mono','Courier New',monospace; padding:6px; overflow:hidden; width:800px; height:480px; user-select:none; }
+  body {
+    width:800px; height:480px; overflow:hidden; padding:6px; user-select:none;
+    background:var(--void);
+    color:var(--text); font-family:'JetBrains Mono','Courier New',monospace;
+    display:grid; grid-template-rows:36px 28px 1fr; gap:5px;
+  }
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; opacity:.08;
+    background:
+      linear-gradient(rgba(var(--blue-rgb),.08) 1px, transparent 1px) 0 0 / 100% 24px;
+  }
+  body.warn { --alert:var(--amber); }
+  body.critical { --alert:var(--purple); --severe:var(--purple); }
 
-  /* ── Header ─────────────────────────────────────── */
-  .header { display:flex; justify-content:space-between; align-items:center; padding:4px 10px; margin-bottom:6px; background:var(--card); border-radius:6px; border:1px solid var(--border); }
-  .header h1 { font-size:15px; color:var(--accent); letter-spacing:2px; }
-  .header .clock { font-size:14px; color:var(--dim); }
-  .dot { width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:4px; }
-  .dot.on { background:var(--green); box-shadow:0 0 5px var(--green); }
-  .dot.off { background:var(--red); box-shadow:0 0 5px var(--red); }
-  .status { font-size:12px; display:flex; align-items:center; }
-  .model-tag { display:inline-block; padding:1px 7px; border-radius:4px; font-size:12px; background:rgba(56,189,248,0.1); color:var(--accent); border:1px solid rgba(56,189,248,0.25); }
+  .header {
+    position:relative; z-index:1; display:grid; align-items:center;
+    border:1px solid var(--line); border-radius:8px;
+    background:var(--panel);
+    box-shadow:0 8px 18px var(--shadow), inset 0 1px 0 rgba(201,209,217,.03);
+  }
+  .header { grid-template-columns:minmax(0,1fr) 104px minmax(0,1fr); gap:8px; padding:0 9px; }
+  .bar-left, .bar-right { min-width:0; display:flex; align-items:center; gap:8px; }
+  .bar-right { justify-content:flex-end; }
+  .header h1 { min-width:0; font-size:15px; color:var(--cyan); letter-spacing:1.2px; text-transform:uppercase; text-shadow:0 0 12px rgba(var(--cyan-rgb),.28); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .clock { justify-self:center; font-size:17px; color:var(--text); letter-spacing:1px; font-weight:bold; }
+  .status { font-size:12px; display:flex; align-items:center; gap:5px; color:var(--muted); text-transform:uppercase; white-space:nowrap; }
+  .dot { width:7px; height:7px; border-radius:50%; display:inline-block; flex:0 0 auto; }
+  .dot.on { background:var(--ok); box-shadow:0 0 8px var(--ok); }
+  .dot.off { background:var(--magenta); box-shadow:0 0 8px var(--magenta); }
+  .model-tag { min-width:0; max-width:184px; padding:3px 7px; border-radius:999px; font-size:11px; color:var(--cyan); border:1px solid rgba(var(--cyan-rgb),.28); background:rgba(var(--cyan-rgb),.08); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .quit-btn { background:rgba(var(--blue-rgb),.08); border:1px solid rgba(var(--blue-rgb),.28); color:var(--muted); border-radius:6px; cursor:pointer; padding:3px 7px; font-size:11px; font-family:inherit; }
 
-  /* ── Card base ──────────────────────────────────── */
-  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:8px 10px; display:flex; position:relative; overflow:hidden; }
-  .card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg, var(--accent), var(--purple), var(--cyan)); opacity:0.45; }
-  .card-title { font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px; display:flex; align-items:center; gap:5px; flex-shrink:0; }
+  .pager { position:relative; z-index:1; display:grid; grid-template-columns:repeat(4,1fr); gap:5px; min-height:0; }
+  .page-tab {
+    min-width:0; border:1px solid var(--line); background:rgba(var(--panel-rgb),.82); color:var(--muted);
+    border-radius:7px; padding:0 6px; font:inherit; font-size:12px; text-transform:uppercase;
+    letter-spacing:.4px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .page-tab::before { content:''; width:5px; height:5px; border-radius:50%; background:var(--faint); }
+  .page-tab.active { color:var(--text); border-color:rgba(var(--blue-rgb),.54); background:rgba(var(--blue-rgb),.12); box-shadow:inset 0 0 12px rgba(var(--blue-rgb),.08); }
+  .page-tab.active::before { background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+  .pages { position:relative; overflow:hidden; min-height:0; z-index:1; }
+  .page { position:absolute; inset:0; display:none; }
+  .page.active { display:block; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:8px 9px; display:flex; position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(201,209,217,.03); }
+  .card::before { content:''; position:absolute; inset:0 0 auto 0; height:2px; background:var(--blue); opacity:.72; }
+  .card-title { min-width:0; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px; display:flex; align-items:center; gap:5px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-  /* ── Layout ─────────────────────────────────────── */
-  .main-grid  { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:148px 86px; gap:6px; margin-bottom:6px; }
-  .cpu-card { grid-column:1; grid-row:1; }
-  .resources-card { grid-column:1; grid-row:2; }
-  .ai-card { grid-column:2; grid-row:1 / span 2; }
-  .bottom-row { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px; height:198px; }
+  .main-grid  { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:238px 1fr; gap:6px; height:100%; }
+  .cpu-card { grid-column:1; grid-row:1; min-width:0; }
+  .ai-card { grid-column:2; grid-row:1; min-width:0; }
+  .core-proc-card { grid-column:1 / span 2; grid-row:2; min-width:0; }
+  .bottom-row { display:grid; grid-template-columns:236px 1fr 246px; grid-template-rows:100%; gap:6px; height:100%; }
+  .droids-grid { display:grid; grid-template-columns:248px minmax(0,1fr) 226px; grid-template-rows:124px 1fr; gap:6px; height:100%; }
+  .droid-fleet-card { grid-column:1; grid-row:1 / span 2; min-width:0; }
+  .droid-command-card { grid-column:2 / span 2; grid-row:1; min-width:0; }
+  .droid-cron-card { grid-column:2; grid-row:2; min-width:0; }
+  .droid-attn-card { grid-column:3; grid-row:2; min-width:0; }
+  .mission-grid { display:grid; grid-template-columns:246px minmax(0,1fr) 226px; grid-template-rows:76px 160px minmax(0,1fr); gap:6px; height:100%; }
+  .mission-card { grid-column:2; grid-row:2 / span 2; min-width:0; }
+  .service-card { grid-column:1 / span 3; grid-row:1; min-width:0; }
+  .identity-card { grid-column:1; grid-row:3; min-width:0; }
+  .captain-card { grid-column:1; grid-row:2; min-width:0; }
+  .context-card { grid-column:3; grid-row:2; min-width:0; }
+  .proc-card { grid-column:3; grid-row:3; min-width:0; }
+  .control-grid { display:grid; grid-template-columns:286px minmax(0,1fr) 226px; grid-template-rows:1fr 1fr; gap:6px; height:100%; }
+  .calendar-card { grid-column:1; grid-row:1 / span 2; min-width:0; }
+  .loops-card { grid-column:2; grid-row:1 / span 2; min-width:0; }
+  .commands-card { grid-column:3; grid-row:1 / span 2; min-width:0; }
 
   /* ── CPU widget ──────────────────────────────────── */
-  .cpu-main { display:flex; align-items:stretch; gap:14px; flex:1; height:100%; }
-  .cpu-gauge { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; flex-shrink:0; width:86px; padding-top:4px; }
+  .cpu-main { display:grid; grid-template-columns:86px minmax(0,1fr); grid-template-rows:minmax(0,1fr) auto; column-gap:12px; row-gap:6px; flex:1; height:100%; min-width:0; }
+  .cpu-gauge { grid-column:1; grid-row:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; flex-shrink:0; width:86px; padding-top:4px; }
   .cpu-gauge svg { display:block; }
   .cpu-gauge-pct { font-size:24px; font-weight:bold; line-height:1; margin-top:2px; }
-  .cpu-gauge-label { font-size:10px; color:var(--dim); letter-spacing:2px; margin-top:2px; }
-  .cpu-gauge-chips { display:flex; flex-direction:column; gap:4px; margin-top:6px; width:100%; }
-  .cpu-chip { font-size:11px; padding:2px 6px; border-radius:3px; background:rgba(255,255,255,0.05); border:1px solid var(--border); white-space:nowrap; text-align:center; }
-  .cpu-cores { flex:1; display:flex; flex-direction:column; justify-content:space-between; min-width:0; padding:4px 0 2px; }
+  .cpu-gauge-label { font-size:10px; color:var(--muted); letter-spacing:2px; margin-top:2px; }
+  .cpu-gauge-chips { display:flex; flex-direction:column; gap:5px; margin-top:6px; width:100%; }
+  .cpu-chip { font-size:12px; line-height:1.1; padding:3px 5px; border-radius:5px; background:rgba(255,255,255,0.04); border:1px solid var(--line); white-space:nowrap; text-align:center; }
+  .cpu-detail-stack { display:contents; }
+  .cpu-cores { grid-column:2; grid-row:1; display:flex; flex-direction:column; justify-content:space-between; min-width:0; padding:4px 0 2px; }
   .core-row { display:flex; align-items:center; gap:7px; }
-  .core-lbl { font-size:12px; color:var(--dim); width:18px; text-align:right; flex-shrink:0; }
+  .core-lbl { font-size:12px; color:var(--muted); width:18px; text-align:right; flex-shrink:0; }
   .core-track { flex:1; height:9px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden; position:relative; }
   .core-fill { height:100%; border-radius:4px; transition:width 0.6s ease; position:relative; }
   .core-fill::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg,rgba(255,255,255,0.15) 0%,transparent 100%); border-radius:4px; }
@@ -55,88 +109,259 @@
   .res-body { flex:1; display:flex; flex-direction:column; justify-content:space-around; gap:6px; }
   .res-section { display:flex; flex-direction:column; gap:2px; }
   .res-row { display:flex; align-items:center; gap:6px; }
-  .res-lbl-left { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; width:30px; flex-shrink:0; }
+  .res-lbl-left { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; width:34px; flex-shrink:0; }
   .res-track { flex:1; height:10px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; position:relative; }
   .res-fill { height:100%; border-radius:4px; transition:width 0.8s ease; position:relative; }
   .res-fill::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg,rgba(255,255,255,0.18) 0%,transparent 100%); border-radius:4px; }
   .res-pct { font-size:13px; font-weight:bold; width:36px; text-align:right; flex-shrink:0; }
-  .res-detail { font-size:9px; color:var(--dim); width:80px; text-align:right; flex-shrink:0; white-space:nowrap; }
-  .res-sub { display:flex; gap:10px; font-size:9px; color:var(--dim); padding-left:36px; }
+  .res-detail { font-size:10px; color:var(--muted); width:78px; text-align:right; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .res-sub { display:flex; gap:9px; font-size:10px; color:var(--muted); padding-left:40px; min-width:0; white-space:nowrap; overflow:hidden; }
   .res-sub b { color:var(--text); font-weight:normal; }
+  .cpu-card .res-body { grid-column:1 / -1; grid-row:2; flex:0 0 auto; justify-content:flex-start; gap:5px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.06); min-width:0; }
+  .cpu-card .res-section { gap:1px; }
+  .cpu-card .res-row { gap:5px; }
+  .cpu-card .res-track { height:8px; }
+  .cpu-card .res-pct { font-size:12px; width:34px; }
+  .cpu-card .res-detail { width:100px; font-size:9px; }
+  .cpu-card .res-sub { display:none; }
 
   /* ── AI usage widget ─────────────────────────────── */
-  .ai-usage { display:flex; flex:1; flex-direction:column; min-width:0; gap:8px; }
-  .usage-stack { display:grid; grid-template-rows:1fr 1fr; gap:8px; flex:1; min-width:0; }
-  .usage-provider { position:relative; display:flex; flex-direction:column; gap:7px; min-width:0; padding:8px; border-radius:8px; border:1px solid var(--border); background:
-      linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
-      rgba(255,255,255,0.015); }
+  .ai-usage { display:flex; flex:1; flex-direction:column; min-width:0; gap:6px; }
+  .usage-stack { display:grid; grid-template-rows:1fr 1fr; gap:6px; flex:1; min-width:0; min-height:0; }
+  .usage-provider { position:relative; display:flex; flex-direction:column; gap:7px; min-width:0; padding:8px; border-radius:8px; border:1px solid var(--line); background:
+      rgba(var(--deck-rgb),0.32); overflow:hidden; }
   .usage-provider::before { content:''; position:absolute; inset:0 0 auto 0; height:2px; border-radius:8px 8px 0 0; opacity:0.7; }
-  .usage-provider.openai::before { background:linear-gradient(90deg, var(--cyan), var(--accent)); }
-  .usage-provider.claude::before { background:linear-gradient(90deg, var(--purple), var(--accent)); }
+  .usage-provider.openai::before { background:linear-gradient(90deg, var(--cyan), var(--blue)); }
+  .usage-provider.claude::before { background:linear-gradient(90deg, var(--violet), var(--cyan)); }
   .usage-header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
   .usage-title { min-width:0; display:flex; flex-direction:column; gap:3px; }
   .usage-name { font-size:13px; font-weight:bold; color:var(--text); text-transform:uppercase; letter-spacing:1.4px; text-shadow:0 0 10px rgba(255,255,255,0.08); }
-  .usage-provider.openai .usage-name { color:var(--accent); }
-  .usage-provider.claude .usage-name { color:var(--purple); }
+  .usage-provider.openai .usage-name { color:var(--cyan); }
+  .usage-provider.claude .usage-name { color:var(--violet); }
   .usage-line { display:flex; align-items:center; gap:8px; min-width:0; }
   .usage-hero { font-size:18px; font-weight:bold; line-height:1; letter-spacing:0.3px; }
-  .provider-pill { padding:3px 7px; border-radius:999px; font-size:9px; text-transform:uppercase; letter-spacing:1px; border:1px solid var(--border); background:rgba(255,255,255,0.04); white-space:nowrap; }
-  .provider-pill.ok { color:var(--green); border-color:rgba(34,197,94,0.24); background:rgba(34,197,94,0.10); }
-  .provider-pill.warn { color:var(--orange); border-color:rgba(245,158,11,0.24); background:rgba(245,158,11,0.10); }
-  .provider-pill.hit { color:var(--red); border-color:rgba(239,68,68,0.24); background:rgba(239,68,68,0.10); }
-  .usage-sub { font-size:9px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .usage-window-list { display:flex; flex-direction:column; gap:6px; flex:1; justify-content:center; }
-  .usage-window-row { display:grid; grid-template-columns:24px 1fr 42px 68px; gap:6px; align-items:center; }
-  .usage-window-tag { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; }
+  .provider-pill { padding:3px 7px; border-radius:999px; font-size:10px; text-transform:uppercase; letter-spacing:.7px; border:1px solid var(--line); background:rgba(255,255,255,0.04); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:82px; }
+  .provider-pill.ok { color:var(--ok); border-color:rgba(var(--ok-rgb),0.30); background:rgba(var(--ok-rgb),0.10); }
+  .provider-pill.warn { color:var(--amber); border-color:rgba(var(--amber-rgb),0.32); background:rgba(var(--amber-rgb),0.10); }
+  .provider-pill.hit { color:var(--magenta); border-color:rgba(var(--violet-rgb),0.34); background:rgba(var(--violet-rgb),0.11); }
+  .usage-sub { font-size:9px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .usage-window-list { display:flex; flex-direction:column; gap:5px; flex:1; justify-content:center; min-height:0; }
+  .usage-window-row { display:grid; grid-template-columns:20px minmax(0,1fr) 34px 66px; gap:4px; align-items:center; min-width:0; }
+  .usage-window-tag { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
   .usage-window-track { height:14px; background:rgba(255,255,255,0.05); border-radius:999px; overflow:hidden; position:relative; }
   .usage-window-fill { height:100%; border-radius:999px; transition:width 0.8s ease; position:relative; }
   .usage-window-fill::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(255,255,255,0.22), transparent 70%); }
-  .usage-window-value { font-size:13px; font-weight:bold; text-align:right; white-space:nowrap; letter-spacing:-0.2px; }
-  .usage-window-meta { font-size:9px; color:var(--dim); text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:-0.2px; }
-  .usage-footer { display:flex; justify-content:space-between; gap:10px; padding-top:2px; border-top:1px solid rgba(255,255,255,0.05); font-size:9px; color:var(--dim); }
+  .usage-window-value { font-size:13px; font-weight:bold; text-align:right; white-space:nowrap; letter-spacing:0; }
+  .usage-window-meta { font-size:10px; color:var(--muted); text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0; }
+  .usage-footer { display:flex; justify-content:space-between; gap:8px; padding-top:2px; border-top:1px solid rgba(255,255,255,0.05); font-size:10px; color:var(--muted); }
   .usage-footer span { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .core-proc-panel { min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+  .core-proc-panel .proc-list { gap:2px; }
+  .core-proc-panel .proc-row { grid-template-columns:42px minmax(0,1fr) 42px 42px; gap:6px; min-height:18px; padding:1px 5px; }
+  .core-proc-panel .proc-head { min-height:16px; }
+  .core-proc-panel .proc-row:not(.proc-head) span:nth-child(n+3) { font-size:12px; font-weight:bold; color:var(--text); }
 
   /* ── Cron widget ─────────────────────────────────── */
   .cron-list { flex:1; display:flex; flex-direction:column; gap:0; overflow:hidden; }
-  .cron-item { display:flex; gap:8px; align-items:stretch; padding:5px 0; border-bottom:1px solid var(--border); }
+  .cron-item { display:flex; gap:7px; align-items:stretch; padding:5px 0; border-bottom:1px solid var(--line); min-width:0; }
   .cron-item:last-child { border-bottom:none; }
   .cron-strip { width:3px; border-radius:2px; flex-shrink:0; }
-  .cron-strip.active { background:var(--green); }
-  .cron-strip.paused { background:var(--red); opacity:0.5; }
+  .cron-strip.active { background:var(--ok); }
+  .cron-strip.paused { background:var(--amber); opacity:0.7; }
   .cron-body { flex:1; min-width:0; }
-  .cron-name { font-size:13px; font-weight:bold; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:5px; }
+  .cron-name { min-width:0; font-size:13px; font-weight:bold; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:5px; }
+  .cron-name-text { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .cron-badge { font-size:10px; padding:1px 5px; border-radius:3px; font-weight:normal; flex-shrink:0; }
-  .cron-badge.active { background:rgba(34,197,94,0.12); color:var(--green); }
-  .cron-badge.paused { background:rgba(239,68,68,0.12); color:var(--red); }
-  .cron-owner { font-size:9px; padding:1px 4px; border-radius:3px; font-weight:normal; flex-shrink:0; color:var(--accent); background:rgba(56,189,248,0.10); border:1px solid rgba(56,189,248,0.18); }
-  .cron-meta { font-size:12px; color:var(--dim); margin-top:1px; }
+  .cron-badge.active { background:rgba(var(--ok-rgb),0.12); color:var(--ok); }
+  .cron-badge.paused { background:rgba(var(--amber-rgb),0.12); color:var(--amber); }
+  .cron-badge.failed { background:rgba(var(--violet-rgb),0.12); color:var(--violet); }
+  .cron-owner { font-size:10px; padding:1px 4px; border-radius:3px; font-weight:normal; flex-shrink:0; color:var(--cyan); background:rgba(var(--cyan-rgb),0.10); border:1px solid rgba(var(--cyan-rgb),0.20); }
+  .cron-meta { font-size:12px; color:var(--muted); margin-top:1px; }
   .cron-status { font-size:12px; flex-shrink:0; }
+  .droid-cron-card .cron-list { gap:3px; }
+  .droid-cron-card .cron-item { display:grid; grid-template-columns:3px 42px minmax(0,1fr) 50px; gap:7px; align-items:center; min-height:38px; padding:4px 0; }
+  .droid-cron-card .cron-strip { height:28px; }
+  .cron-when { font-size:11px; color:var(--cyan); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cron-main { min-width:0; }
+  .cron-subline { display:flex; gap:7px; min-width:0; margin-top:2px; font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; }
+  .cron-subline span { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .cron-state-cell { display:flex; flex-direction:column; align-items:flex-end; gap:3px; min-width:0; }
+  .cron-last { font-size:10px; color:var(--muted); max-width:50px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   /* ── Agent Ops / Attention widget ───────────────── */
   .ops-panel { flex:1; min-height:0; display:grid; grid-template-rows:58px 1fr; gap:7px; overflow:hidden; }
   .agent-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; min-height:0; }
-  .agent-box { min-width:0; border:1px solid rgba(30,41,59,0.9); border-radius:6px; padding:5px 6px; background:rgba(255,255,255,0.025); display:flex; flex-direction:column; gap:4px; overflow:hidden; }
+  .agent-box { min-width:0; border:1px solid var(--line); border-radius:6px; padding:5px 6px; background:rgba(255,255,255,0.025); display:flex; flex-direction:column; gap:4px; overflow:hidden; }
   .agent-top { display:flex; align-items:center; justify-content:space-between; gap:6px; }
   .agent-name { font-size:12px; font-weight:bold; color:var(--text); letter-spacing:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .agent-pill { font-size:9px; text-transform:uppercase; letter-spacing:1px; padding:1px 5px; border-radius:999px; border:1px solid var(--border); flex-shrink:0; }
-  .agent-pill.ok { color:var(--green); background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.25); }
-  .agent-pill.paused, .agent-pill.idle { color:var(--orange); background:rgba(245,158,11,0.10); border-color:rgba(245,158,11,0.25); }
-  .agent-pill.failed { color:var(--red); background:rgba(239,68,68,0.10); border-color:rgba(239,68,68,0.25); }
-  .agent-meta { display:flex; justify-content:space-between; gap:6px; font-size:10px; color:var(--dim); white-space:nowrap; }
-  .agent-next { font-size:10px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .agent-pill { font-size:10px; text-transform:uppercase; letter-spacing:.6px; padding:1px 5px; border-radius:999px; border:1px solid var(--line); flex-shrink:0; }
+  .agent-pill.ok { color:var(--ok); background:rgba(var(--ok-rgb),0.10); border-color:rgba(var(--ok-rgb),0.26); }
+  .agent-pill.paused, .agent-pill.idle { color:var(--amber); background:rgba(var(--amber-rgb),0.10); border-color:rgba(var(--amber-rgb),0.26); }
+  .agent-pill.failed { color:var(--magenta); background:rgba(var(--violet-rgb),0.11); border-color:rgba(var(--violet-rgb),0.28); }
+  .agent-meta { display:flex; justify-content:space-between; gap:6px; font-size:10px; color:var(--muted); white-space:nowrap; }
+  .agent-next { font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .agent-next b { color:var(--text); font-weight:normal; }
   .warn-box { min-height:0; display:flex; flex-direction:column; overflow:hidden; border-top:1px solid rgba(255,255,255,0.06); padding-top:6px; }
-  .warn-title { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:1.3px; margin-bottom:4px; display:flex; justify-content:space-between; }
+  .warn-title { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; margin-bottom:4px; display:flex; justify-content:space-between; }
   .warn-list { flex:1; min-height:0; display:flex; flex-direction:column; gap:3px; overflow:hidden; }
-  .warn-item { display:grid; grid-template-columns:46px 1fr; gap:6px; align-items:center; min-height:18px; padding:2px 5px; border-radius:4px; background:rgba(255,255,255,0.025); border-left:3px solid var(--orange); }
-  .warn-item.hit { border-left-color:var(--red); background:rgba(239,68,68,0.07); }
-  .warn-item.warn { border-left-color:var(--orange); }
-  .warn-label { font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:0.8px; white-space:nowrap; }
+  .warn-item { display:grid; grid-template-columns:46px 1fr; gap:6px; align-items:center; min-height:18px; padding:2px 5px; border-radius:4px; background:rgba(255,255,255,0.025); border-left:3px solid var(--amber); }
+  .warn-item.hit { border-left-color:var(--magenta); background:rgba(var(--violet-rgb),0.10); }
+  .warn-item.warn { border-left-color:var(--amber); }
+  .warn-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; }
   .warn-text { font-size:11px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .warn-empty { font-size:12px; color:var(--green); padding-top:14px; text-align:center; }
+  .warn-empty { font-size:12px; color:var(--ok); padding-top:14px; text-align:center; }
+  .droid-attn-card .warn-box { flex:1; border-top:0; padding-top:0; }
+  .droid-attn-card .warn-item { grid-template-columns:42px 1fr; }
+  .droid-attn-card .warn-empty { padding-top:48px; }
+
+  /* ── Droid status visual ────────────────────────── */
+  .droid-stage { flex:1; display:grid; grid-template-rows:1fr 64px; gap:8px; min-height:0; }
+  .droid-art { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:center; justify-items:center; min-height:0; }
+  .droid { width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; border:1px solid rgba(255,255,255,0.07); border-radius:8px; background:radial-gradient(circle at 50% 20%, rgba(var(--cyan-rgb),.09), rgba(var(--panel-rgb),0.16)); position:relative; overflow:hidden; }
+  .droid::before { content:''; position:absolute; inset:10px; border-radius:999px; opacity:0.18; filter:blur(16px); }
+  .droid.c3po::before { background:var(--amber); }
+  .droid.eve::before { background:var(--violet); }
+  .droid svg { width:86px; height:126px; z-index:1; overflow:visible; }
+  .droid .antenna { transform-origin:50% 42%; animation:droidNod 3.4s ease-in-out infinite; }
+  .droid .eye { animation:droidBlink 4s ease-in-out infinite; }
+  .droid.eve .core { animation:eveFloat 3.8s ease-in-out infinite; }
+  .droid.failed { border-color:rgba(var(--violet-rgb),0.48); }
+  .droid.failed svg { filter:drop-shadow(0 0 8px rgba(var(--violet-rgb),0.52)); }
+  .droid.paused { border-color:rgba(var(--amber-rgb),0.48); }
+  .droid.ok svg { filter:drop-shadow(0 0 8px rgba(var(--ok-rgb),0.24)); }
+  .droid-caption { z-index:1; display:flex; align-items:center; gap:6px; font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+  .droid-caption span:last-child { color:var(--muted); }
+  .droid-feed { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .droid-stat { border:1px solid var(--line); border-radius:6px; padding:6px; background:rgba(0,0,0,0.12); min-width:0; }
+  .droid-stat b { display:block; font-size:16px; line-height:1; color:var(--text); }
+  .droid-stat span { display:block; margin-top:4px; font-size:9px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-transform:uppercase; letter-spacing:1px; }
+  .droid-roster { flex:1; min-height:0; display:grid; grid-template-rows:1fr 1fr; gap:7px; }
+  .droid-unit { min-height:0; display:grid; grid-template-columns:58px minmax(0,1fr); grid-template-rows:auto auto 1fr; column-gap:8px; row-gap:5px; padding:8px; border:1px solid var(--line); border-radius:7px; background:rgba(var(--deck-rgb),0.24); overflow:hidden; position:relative; }
+  .droid-unit::before { content:''; position:absolute; inset:0 0 auto 0; height:2px; background:var(--ok); opacity:.75; }
+  .droid-unit.failed::before { background:var(--violet); }
+  .droid-unit.paused::before, .droid-unit.idle::before { background:var(--amber); }
+  .droid-avatar { grid-column:1; grid-row:1 / span 3; width:58px; height:86px; align-self:center; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.08); border-radius:7px; background:radial-gradient(circle at 50% 25%, rgba(var(--cyan-rgb),.10), rgba(var(--deck-rgb),.24)); overflow:hidden; }
+  .droid-avatar svg { width:50px; height:76px; overflow:visible; }
+  .droid-avatar .antenna { transform-origin:50% 42%; animation:droidNod 3.4s ease-in-out infinite; }
+  .droid-avatar .eye { animation:droidBlink 4s ease-in-out infinite; }
+  .droid-avatar.eve .core { animation:eveFloat 3.8s ease-in-out infinite; }
+  .droid-unit.failed .droid-avatar { border-color:rgba(var(--violet-rgb),0.46); }
+  .droid-unit.paused .droid-avatar, .droid-unit.idle .droid-avatar { border-color:rgba(var(--amber-rgb),0.44); }
+  .droid-unit.ok .droid-avatar { border-color:rgba(var(--ok-rgb),0.34); }
+  .droid-unit-head { min-width:0; display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .droid-unit-name { font-size:13px; font-weight:bold; color:var(--text); letter-spacing:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .droid-unit-meta { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; min-width:0; }
+  .droid-metric { min-width:0; border:1px solid rgba(255,255,255,0.06); border-radius:5px; padding:3px 4px; background:rgba(255,255,255,0.025); }
+  .droid-metric b { display:block; font-size:13px; line-height:1; color:var(--text); }
+  .droid-metric span { display:block; margin-top:2px; font-size:8px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .droid-next { min-width:0; align-self:end; padding-top:4px; border-top:1px solid rgba(255,255,255,0.06); font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .droid-next b { color:var(--cyan); font-weight:normal; }
+  .command-deck { flex:1; min-height:0; display:grid; grid-template-columns:repeat(4,1fr) 126px; gap:7px; align-items:stretch; }
+  .deck-kpi { min-width:0; border:1px solid var(--line); border-radius:7px; padding:8px; background:rgba(var(--deck-rgb),0.24); display:flex; flex-direction:column; justify-content:space-between; }
+  .deck-kpi b { font-size:24px; line-height:1; color:var(--text); letter-spacing:.4px; }
+  .deck-kpi span { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .deck-kpi.good b { color:var(--ok); }
+  .deck-kpi.warn b { color:var(--amber); }
+  .deck-kpi.hit b { color:var(--violet); }
+  .deck-health { min-width:0; display:flex; flex-direction:column; justify-content:space-between; border:1px solid rgba(var(--blue-rgb),0.24); border-radius:7px; padding:8px; background:rgba(var(--blue-rgb),0.06); }
+  .deck-health .agent-pill { align-self:flex-start; }
+  .deck-health-line { font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* ── Mission / services ─────────────────────────── */
+  .mission-list { flex:1; min-height:0; display:flex; flex-direction:column; gap:4px; overflow:hidden; }
+  .mission-item { display:grid; grid-template-columns:44px minmax(0,1fr); gap:7px; align-items:start; padding:4px 6px; border-left:3px solid var(--ok); border-radius:5px; background:rgba(255,255,255,0.025); min-height:37px; }
+  .mission-item.warn { border-left-color:var(--amber); background:rgba(var(--amber-rgb),0.08); }
+  .mission-item.critical { border-left-color:var(--magenta); background:rgba(var(--violet-rgb),0.10); }
+  .mission-time { font-size:10px; color:var(--muted); white-space:nowrap; padding-top:1px; }
+  .mission-body { min-width:0; }
+  .mission-title { min-width:0; display:flex; align-items:center; gap:5px; font-size:12px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mission-title-text { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .mission-detail { font-size:10px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mission-label { flex:0 0 auto; max-width:44px; padding:1px 4px; border-radius:4px; color:var(--cyan); background:rgba(var(--cyan-rgb),0.08); border:1px solid rgba(var(--cyan-rgb),0.18); text-transform:uppercase; letter-spacing:.7px; overflow:hidden; text-overflow:ellipsis; }
+  .service-list { flex:1; display:grid; grid-template-columns:repeat(4,1fr); gap:6px; min-height:0; }
+  .service-row { display:grid; grid-template-columns:50px minmax(0,1fr) 44px; gap:5px; align-items:center; padding:5px 6px; border:1px solid rgba(255,255,255,0.06); border-radius:6px; background:rgba(255,255,255,0.025); min-width:0; }
+  .service-name { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; white-space:nowrap; }
+  .service-value { font-size:12px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .service-pill { font-size:10px; text-align:center; text-transform:uppercase; letter-spacing:.5px; border-radius:999px; padding:2px 4px; border:1px solid var(--line); color:var(--muted); }
+  .service-pill.ok { color:var(--ok); border-color:rgba(var(--ok-rgb),0.26); background:rgba(var(--ok-rgb),0.08); }
+  .service-pill.warn { color:var(--amber); border-color:rgba(var(--amber-rgb),0.26); background:rgba(var(--amber-rgb),0.08); }
+  .service-pill.critical { color:var(--magenta); border-color:rgba(var(--violet-rgb),0.28); background:rgba(var(--violet-rgb),0.10); }
+  .identity-grid { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:5px; align-content:start; }
+  .identity-box { min-width:0; padding:5px 6px; border:1px solid rgba(255,255,255,0.05); border-radius:5px; background:rgba(255,255,255,0.02); }
+  .identity-box span { display:block; color:var(--muted); font-size:9px; text-transform:uppercase; letter-spacing:1px; }
+  .identity-box b { display:block; margin-top:3px; font-size:11px; font-weight:normal; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .captain-card .kv-grid { gap:4px; }
+  .captain-card .kv { padding:4px 6px; }
+  .captain-card .kv span { font-size:8px; }
+  .captain-card .kv b { margin-top:2px; font-size:11px; }
+  .context-list { flex:1; min-height:0; display:flex; flex-direction:column; gap:5px; overflow:hidden; }
+  .context-line { display:grid; grid-template-columns:48px minmax(0,1fr); gap:6px; align-items:center; min-height:23px; padding:4px 6px; border-radius:5px; background:rgba(255,255,255,0.025); border-left:3px solid rgba(var(--blue-rgb),0.52); }
+  .context-line.warn { border-left-color:var(--amber); background:rgba(var(--amber-rgb),0.08); }
+  .context-line.critical { border-left-color:var(--magenta); background:rgba(var(--violet-rgb),0.10); }
+  .context-label { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .context-text { min-width:0; font-size:11px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .proc-card .proc-list { gap:3px; }
+  .proc-card .proc-row { grid-template-columns:34px minmax(0,1fr) 34px 34px; gap:4px; min-height:22px; padding:2px 5px; }
+  .proc-card .proc-row span { font-size:10px; }
+  .proc-card .proc-row b { font-size:11px; }
+  .proc-card .proc-head { min-height:17px; }
+
+  /* ── Control / life ─────────────────────────────── */
+  .control-list { flex:1; min-height:0; display:flex; flex-direction:column; gap:5px; overflow:hidden; }
+  .control-item { min-width:0; display:grid; grid-template-columns:50px minmax(0,1fr); gap:7px; align-items:center; min-height:39px; padding:5px 6px; border-radius:6px; background:rgba(255,255,255,0.025); border-left:3px solid rgba(var(--blue-rgb),0.52); }
+  .calendar-item { grid-template-columns:64px minmax(0,1fr); }
+  .control-item.warn { border-left-color:var(--amber); background:rgba(var(--amber-rgb),0.08); }
+  .control-item.critical { border-left-color:var(--magenta); background:rgba(var(--violet-rgb),0.10); }
+  .control-kicker { font-size:10px; color:var(--cyan); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .calendar-kicker { display:flex; flex-direction:column; gap:1px; line-height:1.05; overflow:visible; }
+  .calendar-day { font-size:9px; color:var(--cyan); letter-spacing:.2px; white-space:nowrap; }
+  .calendar-clock { font-size:13px; color:var(--text); font-weight:bold; letter-spacing:.3px; white-space:nowrap; }
+  .control-main { min-width:0; }
+  .control-title { font-size:12px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .control-detail { margin-top:2px; font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .loops-stack { flex:1; min-height:0; display:grid; grid-template-rows:1fr 1fr; gap:6px; }
+  .loop-section { min-height:0; display:flex; flex-direction:column; gap:4px; overflow:hidden; }
+  .loop-heading { display:flex; justify-content:space-between; gap:8px; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:4px; }
+  .command-item { grid-template-columns:minmax(0,1fr) 44px; min-height:50px; align-items:start; }
+  .command-state { justify-self:end; font-size:10px; text-transform:uppercase; letter-spacing:.5px; border:1px solid var(--line); border-radius:999px; padding:2px 5px; color:var(--muted); }
+  .command-state.ok { color:var(--ok); border-color:rgba(var(--ok-rgb),0.28); }
+  .command-state.warn { color:var(--amber); border-color:rgba(var(--amber-rgb),0.28); }
+  .command-state.critical { color:var(--magenta); border-color:rgba(var(--violet-rgb),0.30); }
+
+  /* ── Telemetry / console / intel ────────────────── */
+  .spark-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:5px; }
+  .spark-name { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1.2px; }
+  .spark-value { font-size:14px; font-weight:bold; color:var(--text); white-space:nowrap; }
+  .sparkline { width:100%; height:72px; flex:1; min-height:0; }
+  .spark-meta { display:flex; justify-content:space-between; gap:8px; font-size:9px; color:var(--muted); margin-top:4px; white-space:nowrap; }
+  .spark-empty { font-size:11px; color:var(--muted); display:flex; align-items:center; justify-content:center; flex:1; }
+  .kv-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; flex:1; align-content:start; }
+  .kv { min-width:0; border:1px solid rgba(255,255,255,0.06); border-radius:6px; background:rgba(255,255,255,0.025); padding:7px; }
+  .kv span { display:block; font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; white-space:nowrap; }
+  .kv b { display:block; margin-top:4px; font-size:14px; font-weight:normal; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .proc-list, .intel-list, .health-list { flex:1; min-height:0; display:flex; flex-direction:column; gap:4px; overflow:hidden; }
+  .proc-row { min-width:0; display:grid; grid-template-columns:38px minmax(0,1fr) 38px 38px; gap:5px; align-items:center; padding:5px 6px; border-radius:5px; background:rgba(255,255,255,0.025); border-left:3px solid rgba(var(--blue-rgb),0.52); min-height:30px; }
+  .proc-row span { font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .proc-row b { min-width:0; font-size:12px; font-weight:normal; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .proc-head { min-height:22px; background:transparent; border-left-color:transparent; padding-top:0; padding-bottom:0; }
+  .proc-head span, .proc-head b { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .health-item { display:grid; grid-template-columns:42px 1fr; gap:6px; align-items:center; padding:5px 6px; border-radius:5px; background:rgba(255,255,255,0.025); border-left:3px solid var(--ok); min-height:28px; }
+  .health-item.warn { border-left-color:var(--amber); background:rgba(var(--amber-rgb),0.08); }
+  .health-item.critical { border-left-color:var(--magenta); background:rgba(var(--violet-rgb),0.10); }
+  .health-label { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; }
+  .health-text { font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mood-line { margin-top:7px; padding:7px; border:1px solid rgba(255,255,255,0.07); border-radius:6px; font-size:11px; color:var(--text); background:rgba(0,0,0,0.14); min-height:46px; overflow:hidden; }
+  .intel-row { display:grid; grid-template-columns:1fr 56px; gap:6px; align-items:center; padding:5px 6px; border-radius:5px; background:rgba(255,255,255,0.025); border-left:3px solid rgba(var(--violet-rgb),0.5); min-height:27px; }
+  .intel-row b { font-size:11px; font-weight:normal; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .intel-row span { font-size:9px; color:var(--muted); text-align:right; white-space:nowrap; }
+  .repo-box { display:flex; flex-direction:column; gap:8px; flex:1; min-width:0; }
+  .header > *, .pager > *, .card > *, .mission-body, .service-row > *, .usage-header > *, .usage-line > *, .spark-head > *, .spark-meta > * { min-width:0; }
 
 
   @keyframes glow { 0%,100%{opacity:1} 50%{opacity:.5} }
+  @keyframes droidNod { 0%,100%{ transform:rotate(0deg) } 48%{ transform:rotate(-4deg) } 56%{ transform:rotate(3deg) } }
+  @keyframes droidBlink { 0%,92%,100%{ transform:scaleY(1) } 95%{ transform:scaleY(0.2) } }
+  @keyframes eveFloat { 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-4px) } }
   .pulse { animation:glow 2s ease-in-out infinite; }
 </style>
 </head>
@@ -144,14 +369,27 @@
 
 <!-- HEADER -->
 <div class="header">
-  <h1>⚡ RPi DASHBOARD</h1>
-  <span class="model-tag" id="model-tag">--</span>
+  <div class="bar-left">
+    <h1>HERMES CMD</h1>
+    <span class="status"><span class="dot on pulse" id="live-dot"></span><span id="status-text">LIVE</span></span>
+  </div>
   <span class="clock" id="clock">--:--:--</span>
-  <span class="status"><span class="dot on pulse" id="live-dot"></span><span id="status-text">LIVE</span></span>
-  <button onclick="exitDashboard()" style="background:none;border:1px solid var(--border);color:var(--dim);border-radius:4px;cursor:pointer;padding:2px 8px;font-size:10px;font-family:inherit;margin-left:6px;">✕ Quit</button>
+  <div class="bar-right">
+    <span class="model-tag" id="model-tag">--</span>
+    <button class="quit-btn" onclick="exitDashboard()" type="button">QUIT</button>
+  </div>
 </div>
 
-<!-- MAIN GRID: CPU + Resources + AI Usage -->
+<div class="pager" id="pager">
+  <button class="page-tab active" data-page="0" type="button">CORE</button>
+  <button class="page-tab" data-page="1" type="button">Droids</button>
+  <button class="page-tab" data-page="2" type="button">Mission</button>
+  <button class="page-tab" data-page="3" type="button">Control</button>
+</div>
+
+<div class="pages">
+<section class="page active" data-page="0">
+<!-- MAIN GRID: CPU/resources + AI Usage + PROC -->
 <div class="main-grid">
 
   <!-- CPU Card -->
@@ -162,24 +400,54 @@
           <defs>
             <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
           </defs>
-          <path d="M 8,44 A 35,35 0 0 1 78,44" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="9" stroke-linecap="round"/>
-          <path d="M 8,44 A 35,35 0 0 1 78,44" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="14" stroke-linecap="round" stroke-dasharray="2 8.9"/>
-          <path id="cpu-arc" d="M 8,44 A 35,35 0 0 1 78,44" fill="none" stroke="var(--green)" stroke-width="9" stroke-linecap="round"
+          <path d="M 8,44 A 35,35 0 0 1 78,44" fill="none" stroke="rgba(214,222,235,0.08)" stroke-width="9" stroke-linecap="round"/>
+          <path d="M 8,44 A 35,35 0 0 1 78,44" fill="none" stroke="rgba(130,170,255,0.06)" stroke-width="14" stroke-linecap="round" stroke-dasharray="2 8.9"/>
+          <path id="cpu-arc" d="M 8,44 A 35,35 0 0 1 78,44" fill="none" stroke="var(--ok)" stroke-width="9" stroke-linecap="round"
                 stroke-dasharray="109.96" stroke-dashoffset="109.96" filter="url(#glow)"
                 style="transition:stroke-dashoffset 0.6s ease,stroke 0.4s ease"/>
         </svg>
-        <span class="cpu-gauge-pct" id="cpu-pct" style="color:var(--green)">--%</span>
+        <span class="cpu-gauge-pct" id="cpu-pct" style="color:var(--ok)">--%</span>
         <span class="cpu-gauge-label">CPU</span>
         <div class="cpu-gauge-chips">
-          <span class="cpu-chip" id="temp-val" style="color:var(--green)">🌡 --°</span>
-          <span class="cpu-chip" id="freq-val" style="color:var(--cyan)">⚡ --</span>
+          <span class="cpu-chip" id="temp-val" style="color:var(--ok)">TMP --°</span>
+          <span class="cpu-chip" id="freq-val" style="color:var(--cyan)">CLK --</span>
         </div>
       </div>
-      <div class="cpu-cores">
-        <div class="core-row"><span class="core-lbl">C0</span><div class="core-track"><div class="core-fill" id="cf-0" style="width:0%;background:var(--green)"></div></div><span class="core-pct" id="cp-0" style="color:var(--green)">0%</span></div>
-        <div class="core-row"><span class="core-lbl">C1</span><div class="core-track"><div class="core-fill" id="cf-1" style="width:0%;background:var(--green)"></div></div><span class="core-pct" id="cp-1" style="color:var(--green)">0%</span></div>
-        <div class="core-row"><span class="core-lbl">C2</span><div class="core-track"><div class="core-fill" id="cf-2" style="width:0%;background:var(--green)"></div></div><span class="core-pct" id="cp-2" style="color:var(--green)">0%</span></div>
-        <div class="core-row"><span class="core-lbl">C3</span><div class="core-track"><div class="core-fill" id="cf-3" style="width:0%;background:var(--green)"></div></div><span class="core-pct" id="cp-3" style="color:var(--green)">0%</span></div>
+      <div class="cpu-detail-stack">
+        <div class="cpu-cores">
+          <div class="core-row"><span class="core-lbl">C0</span><div class="core-track"><div class="core-fill" id="cf-0" style="width:0%;background:var(--ok)"></div></div><span class="core-pct" id="cp-0" style="color:var(--ok)">0%</span></div>
+          <div class="core-row"><span class="core-lbl">C1</span><div class="core-track"><div class="core-fill" id="cf-1" style="width:0%;background:var(--ok)"></div></div><span class="core-pct" id="cp-1" style="color:var(--ok)">0%</span></div>
+          <div class="core-row"><span class="core-lbl">C2</span><div class="core-track"><div class="core-fill" id="cf-2" style="width:0%;background:var(--ok)"></div></div><span class="core-pct" id="cp-2" style="color:var(--ok)">0%</span></div>
+          <div class="core-row"><span class="core-lbl">C3</span><div class="core-track"><div class="core-fill" id="cf-3" style="width:0%;background:var(--ok)"></div></div><span class="core-pct" id="cp-3" style="color:var(--ok)">0%</span></div>
+        </div>
+        <div class="res-body">
+          <div class="res-section">
+            <div class="res-row">
+              <span class="res-lbl-left">RAM</span>
+              <div class="res-track"><div class="res-fill" id="ram-bar" style="width:0%;background:var(--ok)"></div></div>
+              <span class="res-pct" id="ram-val" style="color:var(--ok)">--%</span>
+              <span class="res-detail" id="ram-detail">-- / --</span>
+            </div>
+            <div class="res-sub">
+              <span>Free <b id="ram-free">--</b></span>
+              <span>Swap <b id="swap-used-val">--</b></span>
+              <span>Up <b id="uptime-val">--</b></span>
+            </div>
+          </div>
+          <div class="res-section">
+            <div class="res-row">
+              <span class="res-lbl-left">DISK</span>
+              <div class="res-track"><div class="res-fill" id="disk-bar" style="width:0%;background:var(--ok)"></div></div>
+              <span class="res-pct" id="disk-val" style="color:var(--ok)">--%</span>
+              <span class="res-detail" id="disk-detail">-- / --</span>
+            </div>
+            <div class="res-sub">
+              <span>Free <b id="disk-free">--</b></span>
+              <span>↓ <b id="net-rx-inline">--</b></span>
+              <span>↑ <b id="net-tx-inline">--</b></span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -199,7 +467,7 @@
             <div class="usage-window-row">
               <span class="usage-window-tag">5h</span>
               <div class="usage-window-track">
-                <div class="usage-window-fill" id="plan-primary-bar" style="width:0%;background:linear-gradient(90deg,var(--cyan),var(--accent))"></div>
+                <div class="usage-window-fill" id="plan-primary-bar" style="width:0%;background:linear-gradient(90deg,var(--cyan),var(--blue))"></div>
               </div>
               <span class="usage-window-value" id="plan-primary-used" style="color:var(--cyan)">--%</span>
               <span class="usage-window-meta" id="plan-primary-reset">--</span>
@@ -207,9 +475,9 @@
             <div class="usage-window-row">
               <span class="usage-window-tag">1w</span>
               <div class="usage-window-track">
-                <div class="usage-window-fill" id="plan-secondary-bar" style="width:0%;background:linear-gradient(90deg,var(--accent),var(--purple))"></div>
+                <div class="usage-window-fill" id="plan-secondary-bar" style="width:0%;background:linear-gradient(90deg,var(--blue),var(--violet))"></div>
               </div>
-              <span class="usage-window-value" id="plan-secondary-used" style="color:var(--accent)">--%</span>
+              <span class="usage-window-value" id="plan-secondary-used" style="color:var(--blue)">--%</span>
               <span class="usage-window-meta" id="plan-secondary-reset">--</span>
             </div>
           </div>
@@ -229,7 +497,7 @@
             <div class="usage-window-row">
               <span class="usage-window-tag">5h</span>
               <div class="usage-window-track">
-                <div class="usage-window-fill" id="claude-primary-bar" style="width:0%;background:linear-gradient(90deg,var(--purple),var(--accent))"></div>
+                <div class="usage-window-fill" id="claude-primary-bar" style="width:0%;background:linear-gradient(90deg,var(--violet),var(--blue))"></div>
               </div>
               <span class="usage-window-value" id="claude-primary-used" style="color:var(--purple)">--</span>
               <span class="usage-window-meta" id="claude-primary-reset">--</span>
@@ -237,9 +505,9 @@
             <div class="usage-window-row">
               <span class="usage-window-tag">1w</span>
               <div class="usage-window-track">
-                <div class="usage-window-fill" id="claude-secondary-bar" style="width:0%;background:linear-gradient(90deg,var(--accent),var(--cyan))"></div>
+                <div class="usage-window-fill" id="claude-secondary-bar" style="width:0%;background:linear-gradient(90deg,var(--blue),var(--cyan))"></div>
               </div>
-              <span class="usage-window-value" id="claude-secondary-used" style="color:var(--accent)">--</span>
+              <span class="usage-window-value" id="claude-secondary-used" style="color:var(--blue)">--</span>
               <span class="usage-window-meta" id="claude-secondary-reset">--</span>
             </div>
           </div>
@@ -252,80 +520,161 @@
     </div>
   </div>
 
-  <!-- Resources Card -->
-  <div class="card resources-card">
-    <div class="res-body">
-      <div class="res-section">
-        <div class="res-row">
-          <span class="res-lbl-left">RAM</span>
-          <div class="res-track"><div class="res-fill" id="ram-bar" style="width:0%;background:var(--green)"></div></div>
-          <span class="res-pct" id="ram-val" style="color:var(--green)">--%</span>
-          <span class="res-detail" id="ram-detail">-- / --</span>
-        </div>
-        <div class="res-sub">
-          <span>Free <b id="ram-free">--</b></span>
-          <span>Swap <b id="swap-used-val">--</b></span>
-          <span>Up <b id="uptime-val">--</b></span>
-        </div>
+  <!-- PROC Card -->
+  <div class="card core-proc-card core-proc-panel" style="flex-direction:column;">
+    <div class="proc-list" id="core-top-procs"></div>
+  </div>
+
+</div>
+
+</section>
+<section class="page" data-page="1">
+<div class="droids-grid">
+
+  <div class="card droid-fleet-card" style="flex-direction:column;">
+    <div class="card-title">DROID ROSTER</div>
+    <div class="droid-roster" id="agent-ops"></div>
+  </div>
+
+  <div class="card droid-command-card" style="flex-direction:column;">
+    <div class="card-title">COMMAND DECK</div>
+    <div class="command-deck">
+      <div class="deck-kpi good"><b id="droid-jobs">0</b><span>Total Jobs</span></div>
+      <div class="deck-kpi warn"><b id="droid-paused">0</b><span>Paused</span></div>
+      <div class="deck-kpi hit"><b id="droid-failed">0</b><span>Failed</span></div>
+      <div class="deck-kpi hit"><b id="droid-alerts">0</b><span>Alerts</span></div>
+      <div class="deck-health">
+        <span class="agent-pill idle" id="droid-deck-state">idle</span>
+        <div class="deck-health-line" id="droid-health-fresh">fresh --</div>
+        <div class="deck-health-line" id="droid-health-sources">sources --</div>
       </div>
-      <div class="res-section">
-        <div class="res-row">
-          <span class="res-lbl-left">DISK</span>
-          <div class="res-track"><div class="res-fill" id="disk-bar" style="width:0%;background:var(--green)"></div></div>
-          <span class="res-pct" id="disk-val" style="color:var(--green)">--%</span>
-          <span class="res-detail" id="disk-detail">-- / --</span>
-        </div>
-        <div class="res-sub">
-          <span>Free <b id="disk-free">--</b></span>
-          <span>↓ <b id="net-rx-inline">--</b></span>
-          <span>↑ <b id="net-tx-inline">--</b></span>
-        </div>
-      </div>
+    </div>
+  </div>
+
+  <div class="card droid-cron-card" style="flex-direction:column;">
+    <div class="card-title">CRON SCHEDULE</div>
+    <div class="cron-list" id="cron-jobs"></div>
+  </div>
+
+  <div class="card droid-attn-card" style="flex-direction:column;">
+    <div class="card-title">ATTENTION <span id="warn-count">0</span></div>
+    <div class="warn-box">
+      <div class="warn-list" id="warnings"></div>
     </div>
   </div>
 
 </div>
 
-<!-- BOTTOM ROW -->
-<div class="bottom-row">
-
-  <!-- Cron Jobs -->
-  <div class="card" style="flex-direction:column;">
-    <div class="card-title">⏱ CRON JOBS</div>
-    <div class="cron-list" id="cron-jobs"></div>
-  </div>
-
-  <!-- Agent Ops / Attention -->
-  <div class="card" style="flex-direction:column;">
-    <div class="card-title">⚙️ AGENT OPS</div>
-    <div class="ops-panel">
-      <div class="agent-grid" id="agent-ops"></div>
-      <div class="warn-box">
-        <div class="warn-title"><span>Attention</span><span id="warn-count">0</span></div>
-        <div class="warn-list" id="warnings"></div>
+</section>
+<section class="page" data-page="2">
+  <div class="mission-grid">
+    <div class="card mission-card" style="flex-direction:column;">
+      <div class="card-title">▣ MISSION LOG</div>
+      <div class="mission-list" id="mission-log"></div>
+    </div>
+    <div class="card service-card" style="flex-direction:column;">
+      <div class="card-title">◌ SERVICE / NETWORK</div>
+      <div class="service-list" id="service-health"></div>
+    </div>
+    <div class="card identity-card" style="flex-direction:column;">
+      <div class="card-title">⌁ NODE</div>
+      <div class="identity-grid">
+        <div class="identity-box"><span>Host</span><b id="node-host">--</b></div>
+        <div class="identity-box"><span>IP</span><b id="node-ip">--</b></div>
+        <div class="identity-box"><span>Kernel</span><b id="node-kernel">--</b></div>
+        <div class="identity-box"><span>Python</span><b id="node-python">--</b></div>
       </div>
     </div>
+    <div class="card captain-card" style="flex-direction:column;">
+      <div class="card-title">⌬ CAPTAIN CONSOLE</div>
+      <div class="kv-grid">
+        <div class="kv"><span>Uptime</span><b id="console-uptime">--</b></div>
+        <div class="kv"><span>Load</span><b id="console-load">--</b></div>
+        <div class="kv"><span>Processes</span><b id="console-procs">--</b></div>
+        <div class="kv"><span>Threads</span><b id="console-threads">--</b></div>
+        <div class="kv"><span>Thermal</span><b id="console-power">--</b></div>
+        <div class="kv"><span>I/O</span><b id="console-io">--</b></div>
+      </div>
+    </div>
+    <div class="card context-card" style="flex-direction:column;">
+      <div class="card-title">CURRENT CONTEXT</div>
+      <div class="context-list" id="mission-context"></div>
+    </div>
+    <div class="card proc-card" style="flex-direction:column;">
+      <div class="card-title">PROC</div>
+      <div class="proc-list" id="mission-top-procs"></div>
+    </div>
   </div>
-
+</section>
+<section class="page" data-page="3">
+  <div class="control-grid">
+    <div class="card calendar-card" style="flex-direction:column;">
+      <div class="card-title">UPCOMING CALENDAR <span id="calendar-status">--</span></div>
+      <div class="control-list" id="calendar-events"></div>
+    </div>
+    <div class="card loops-card" style="flex-direction:column;">
+      <div class="card-title">TODOS / OPEN LOOPS <span id="loops-status">--</span></div>
+      <div class="loops-stack">
+        <div class="loop-section">
+          <div class="loop-heading"><span>Tasks</span><span id="todo-count">0</span></div>
+          <div class="control-list" id="todo-list"></div>
+        </div>
+        <div class="loop-section">
+          <div class="loop-heading"><span>Loops / Inbox</span><span id="loop-count">0</span></div>
+          <div class="control-list" id="loop-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card commands-card" style="flex-direction:column;">
+      <div class="card-title">MISSION COMMANDS</div>
+      <div class="control-list" id="mission-commands"></div>
+    </div>
+  </div>
+</section>
 </div>
 
 <script>
 var CPU_CIRC = Math.PI * 35;
 var lastStatusData = null;
 var lastStatusOkAt = 0;
+var currentPage = 0;
+var pageCount = 4;
+var historyLimit = 90;
+var telemetryHistory = {cpu:[], ram:[], temp:[], netRx:[], netTx:[], diskRd:[], diskWt:[], aiGpt:[], aiClaude:[], load:[]};
 
 function color(p) { return p<50?'var(--green)':p<80?'var(--orange)':'var(--red)'; }
-function tempColor(t) { return t<60?'var(--green)':t<75?'var(--orange)':'var(--red)'; }
+function tempColor(t) { return t<60?'var(--ok)':t<75?'var(--amber)':'var(--magenta)'; }
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch) {
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
   });
+}
+function truncateText(value, maxLen) {
+  var text = String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+  maxLen = Math.max(1, Number(maxLen || 24));
+  return text.length > maxLen ? text.slice(0, maxLen - 1) + '…' : text;
+}
+function compactStatus(value) {
+  var text = String(value || '').toLowerCase();
+  if(text === 'critical') return 'crit';
+  if(text === 'active') return 'act';
+  if(text === 'paused') return 'pause';
+  if(text === 'failed') return 'fail';
+  if(text === 'unknown') return 'unk';
+  return text || 'ok';
 }
 function formatSpeed(b) {
   if(b >= 1e9) return {v:(b/1e9).toFixed(1), u:'GB/s'};
   if(b >= 1e6) return {v:(b/1e6).toFixed(1), u:'MB/s'};
   if(b >= 1e3) return {v:(b/1e3).toFixed(0), u:'KB/s'};
   return {v:b.toFixed(0), u:'B/s'};
+}
+function formatBytes(b) {
+  b = Number(b || 0);
+  if(b >= 1e9) return (b/1e9).toFixed(1)+' GB';
+  if(b >= 1e6) return (b/1e6).toFixed(1)+' MB';
+  if(b >= 1e3) return (b/1e3).toFixed(0)+' KB';
+  return b.toFixed(0)+' B';
 }
 function formatTokenCount(n) {
   n = Number(n || 0);
@@ -377,14 +726,65 @@ function formatModelLabel(info){
   if(!info) return '';
   var model = info.model || '';
   var provider = info.provider || '';
-  if(provider && model) return provider+' • '+model;
+  if(provider && model) return provider+' '+model;
   return model || provider || '';
 }
 function pct(used, total){
   return total ? (Number(used || 0) / Number(total || 0) * 100) : 0;
 }
+function pushHistory(key, value){
+  if(!telemetryHistory[key]) return;
+  value = Number(value || 0);
+  telemetryHistory[key].push(isFinite(value) ? value : 0);
+  if(telemetryHistory[key].length > historyLimit) telemetryHistory[key].shift();
+}
+function pathForSeries(values, maxValue, w, h){
+  if(!values.length) return '';
+  var max = Math.max(maxValue || 1, 1);
+  if(maxValue == null) max = Math.max.apply(null, values.concat([1]));
+  return values.map(function(v, i){
+    var x = values.length === 1 ? 0 : (i / (values.length - 1)) * w;
+    var y = h - (Math.max(0, Math.min(v, max)) / max) * (h - 4) - 2;
+    return (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+  }).join(' ');
+}
+function renderSparkSvg(id, seriesList, maxValue){
+  var el = document.getElementById(id);
+  if(!el) return;
+  var box = el.viewBox.baseVal;
+  var w = box && box.width ? box.width : 220;
+  var h = box && box.height ? box.height : 72;
+  var colors = ['var(--cyan)', 'var(--violet)', 'var(--ok)'];
+  var grid = '<path d="M0 '+(h-1)+' H'+w+' M0 '+(h/2).toFixed(1)+' H'+w+'" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>';
+  var lines = seriesList.map(function(values, i){
+    var d = pathForSeries(values, maxValue, w, h);
+    return d ? '<path d="'+esc(d)+'" fill="none" stroke="'+colors[i % colors.length]+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' : '';
+  }).join('');
+  el.innerHTML = grid + lines;
+}
+function updateHistories(d, cpuPct, ramPct){
+  pushHistory('cpu', cpuPct);
+  pushHistory('ram', ramPct);
+  pushHistory('temp', d.temp || 0);
+  pushHistory('netRx', d.netRx || 0);
+  pushHistory('netTx', d.netTx || 0);
+  pushHistory('diskRd', d.diskRd || 0);
+  pushHistory('diskWt', d.diskWt || 0);
+  pushHistory('load', d.load && d.load.length ? d.load[0] : 0);
+  var plan = d.openai_plan || {};
+  var claude = d.claude_usage || {};
+  pushHistory('aiGpt', plan.primary_window ? plan.primary_window.used_percent || 0 : 0);
+  pushHistory('aiClaude', claude.five_hour_window && claude.five_hour_window.used_percent != null ? claude.five_hour_window.used_percent : 0);
+}
+function seriesMinMax(values){
+  if(!values.length) return {min:0, max:0};
+  return {min:Math.min.apply(null, values), max:Math.max.apply(null, values)};
+}
 function warnClass(kind){
   return kind === 'hit' ? 'hit' : 'warn';
+}
+function severityClass(severity){
+  return severity === 'critical' || severity === 'hit' ? 'critical' : (severity === 'warn' ? 'warn' : 'ok');
 }
 function agentStateClass(state){
   return ['ok', 'paused', 'failed', 'idle'].indexOf(state) >= 0 ? state : 'idle';
@@ -443,45 +843,359 @@ function collectWarnings(d, fetchError){
 
   return items.slice(0, 5);
 }
+function applySeverity(items){
+  var cls = '';
+  if((items || []).some(function(item){ return item.kind === 'hit' || item.severity === 'critical'; })) cls = 'critical';
+  else if((items || []).length) cls = 'warn';
+  document.body.classList.remove('warn', 'critical');
+  if(cls) document.body.classList.add(cls);
+}
 function renderWarnings(d, fetchError){
   var items = collectWarnings(d, fetchError);
+  applySeverity(items);
   document.getElementById('warn-count').textContent = String(items.length);
   var wdiv = document.getElementById('warnings');
   if(!items.length){
     wdiv.innerHTML = '<div class="warn-empty">No attention items</div>';
-    return;
+    return items;
   }
   wdiv.innerHTML = items.map(function(item){
+    var itemText = truncateText(item.text, 42);
     return '<div class="warn-item '+warnClass(item.kind)+'">'
-      +'<span class="warn-label">'+esc(item.label)+'</span>'
-      +'<span class="warn-text" title="'+esc(item.text)+'">'+esc(item.text)+'</span>'
+      +'<span class="warn-label">'+esc(truncateText(item.label, 6))+'</span>'
+      +'<span class="warn-text" title="'+esc(item.text)+'">'+esc(itemText)+'</span>'
       +'</div>';
   }).join('');
+  return items;
+}
+function renderDroidStatus(d){
+  var ops = d.agent_ops || {};
+  var c3po = ops['C-3PO'] || {state:'idle', job_count:0, paused_count:0, failed_count:0};
+  var eve = ops['EVE'] || {state:'idle', job_count:0, paused_count:0, failed_count:0};
+  [
+    {id:'droid-c3po', label:'c3po-state', data:c3po},
+    {id:'droid-eve', label:'eve-state', data:eve}
+  ].forEach(function(item){
+    var state = agentStateClass(item.data.state || 'idle');
+    var el = document.getElementById(item.id);
+    if(el) el.className = el.className.replace(/\s+(ok|paused|failed|idle)\b/g, '') + ' ' + state;
+    var label = document.getElementById(item.label);
+    if(label) label.textContent = state;
+  });
+  var totalJobs = Number(c3po.job_count || 0) + Number(eve.job_count || 0);
+  var paused = Number(c3po.paused_count || 0) + Number(eve.paused_count || 0);
+  var failed = Number(c3po.failed_count || 0) + Number(eve.failed_count || 0);
+  var alerts = paused + failed;
+  document.getElementById('droid-jobs').textContent = String(totalJobs);
+  document.getElementById('droid-alerts').textContent = String(alerts);
+  var pausedEl = document.getElementById('droid-paused');
+  if(pausedEl) pausedEl.textContent = String(paused);
+  var failedEl = document.getElementById('droid-failed');
+  if(failedEl) failedEl.textContent = String(failed);
+
+  var deckState = failed ? 'failed' : (paused ? 'paused' : (totalJobs ? 'ok' : 'idle'));
+  var deckStateEl = document.getElementById('droid-deck-state');
+  if(deckStateEl){
+    deckStateEl.className = 'agent-pill ' + agentStateClass(deckState);
+    deckStateEl.textContent = compactStatus(deckState);
+  }
+  var hermes = (d.service_health && d.service_health.hermes_cron) || {};
+  var freshEl = document.getElementById('droid-health-fresh');
+  if(freshEl) freshEl.textContent = 'fresh ' + formatAge(hermes.freshness_seconds);
+  var sources = hermes.sources || [];
+  var sourceEl = document.getElementById('droid-health-sources');
+  if(sourceEl) sourceEl.textContent = 'sources ' + sources.filter(function(src){ return src && src.exists; }).length + '/' + sources.length;
 }
 function renderAgentOps(d){
   var ops = d.agent_ops || {};
   var names = ['C-3PO', 'EVE'];
   var html = names.map(function(name){
     var a = ops[name] || {name:name, state:'idle', job_count:0, paused_count:0, failed_count:0};
-    var state = a.state || 'idle';
+    var state = agentStateClass(a.state || 'idle');
     var next = a.next_job;
-    var nextText = next ? ((next.next_run || 'N/A')+' '+(next.name || 'Unnamed')) : 'No active next job';
-    var alertText = [];
-    if(a.failed_count) alertText.push(a.failed_count+' failed');
-    if(a.paused_count) alertText.push(a.paused_count+' paused');
-    return '<div class="agent-box">'
-      +'<div class="agent-top"><span class="agent-name">'+esc(a.name || name)+'</span>'
-      +'<span class="agent-pill '+agentStateClass(state)+'">'+esc(state)+'</span></div>'
-      +'<div class="agent-meta"><span>'+Number(a.job_count || 0)+' jobs</span><span>'+esc(alertText.join(' / ') || 'clear')+'</span></div>'
-      +'<div class="agent-next" title="'+esc(nextText)+'"><b>Next</b> '+esc(nextText)+'</div>'
+    var nextText = next ? ((next.next_run || 'N/A') + ' ' + (next.name || 'Unnamed')) : 'No active job';
+    var key = name === 'C-3PO' ? 'c3po' : 'eve';
+    var avatar = key === 'c3po'
+      ? '<div class="droid-avatar c3po" aria-hidden="true"><svg viewBox="0 0 100 140"><g class="antenna"><circle cx="50" cy="22" r="19" fill="var(--amber)" stroke="var(--text)" stroke-width="3"/><rect x="38" y="38" width="24" height="10" rx="4" fill="var(--ok)"/><circle class="eye" cx="42" cy="20" r="4" fill="var(--deck)"/><circle class="eye" cx="58" cy="20" r="4" fill="var(--deck)"/><path d="M40 30 H60" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/></g><rect x="30" y="50" width="40" height="45" rx="12" fill="var(--amber)" stroke="var(--text)" stroke-width="3"/><path d="M39 60 H61 M37 72 H63 M41 84 H59" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/><path d="M30 58 L16 78 M70 58 L84 78" stroke="var(--amber)" stroke-width="8" stroke-linecap="round"/><path d="M39 95 L34 126 M61 95 L66 126" stroke="var(--amber)" stroke-width="9" stroke-linecap="round"/></svg></div>'
+      : '<div class="droid-avatar eve" aria-hidden="true"><svg viewBox="0 0 100 140"><g class="core"><path d="M50 15 C74 15 84 39 78 64 C73 88 62 111 50 127 C38 111 27 88 22 64 C16 39 26 15 50 15Z" fill="var(--panel)" stroke="var(--blue)" stroke-width="4"/><ellipse cx="50" cy="42" rx="24" ry="14" fill="var(--deck)" stroke="var(--text)" stroke-width="2"/><ellipse class="eye" cx="41" cy="42" rx="7" ry="4" fill="var(--blue)"/><ellipse class="eye" cx="59" cy="42" rx="7" ry="4" fill="var(--blue)"/><path d="M34 77 C42 85 58 85 66 77" fill="none" stroke="var(--text)" stroke-width="3" stroke-linecap="round"/><path d="M25 65 L11 85 M75 65 L89 85" stroke="var(--blue)" stroke-width="7" stroke-linecap="round"/></g></svg></div>';
+    return '<div class="droid-unit '+state+'" id="droid-'+key+'">'
+      +avatar
+      +'<div class="droid-unit-head"><span class="droid-unit-name">'+esc(a.name || name)+'</span>'
+      +'<span class="agent-pill '+state+'" id="'+key+'-state">'+esc(compactStatus(state))+'</span></div>'
+      +'<div class="droid-unit-meta">'
+      +'<div class="droid-metric"><b>'+Number(a.job_count || 0)+'</b><span>jobs</span></div>'
+      +'<div class="droid-metric"><b>'+Number(a.paused_count || 0)+'</b><span>paused</span></div>'
+      +'<div class="droid-metric"><b>'+Number(a.failed_count || 0)+'</b><span>failed</span></div>'
+      +'</div>'
+      +'<div class="droid-next" title="'+esc(nextText)+'"><b>Next</b> '+esc(truncateText(nextText, 30))+'</div>'
       +'</div>';
   }).join('');
   document.getElementById('agent-ops').innerHTML = html;
 }
 
+function renderMissionLog(d){
+  var list = document.getElementById('mission-log');
+  var items = (d.mission_log || []).slice(0, 7);
+  if(!items.length){
+    list.innerHTML = '<div class="warn-empty">No recent mission events</div>';
+    return;
+  }
+  list.innerHTML = items.map(function(item){
+    var sev = severityClass(item.severity);
+    var title = (item.label ? item.label + ' - ' : '') + (item.title || 'Event');
+    var shortTitle = truncateText(item.title || 'Event', 42);
+    var shortDetail = truncateText(item.detail || '', 62);
+    return '<div class="mission-item '+sev+'">'
+      +'<div class="mission-time">'+esc(item.time || '--')+'</div>'
+      +'<div class="mission-body">'
+      +'<div class="mission-title" title="'+esc(title)+'"><span class="mission-label">'+esc(truncateText(item.label || 'SYS', 5))+'</span><span class="mission-title-text">'+esc(shortTitle)+'</span></div>'
+      +'<div class="mission-detail" title="'+esc(item.detail || '')+'">'+esc(shortDetail)+'</div>'
+      +'</div></div>';
+  }).join('');
+}
+
+function formatAge(seconds){
+  if(seconds == null) return '--';
+  seconds = Math.max(0, Number(seconds || 0));
+  if(seconds < 60) return seconds.toFixed(0)+'s';
+  if(seconds < 3600) return Math.floor(seconds/60)+'m';
+  if(seconds < 86400) return Math.floor(seconds/3600)+'h';
+  return Math.floor(seconds/86400)+'d';
+}
+function renderServiceHealth(d){
+  var health = d.service_health || {};
+  var hermes = health.hermes_cron || {};
+  var internet = health.internet || {};
+  var sources = hermes.sources || [];
+  var presentSources = sources.filter(function(src){ return src && src.exists; }).length;
+  var rows = [
+    {name:'API', value:'port '+((health.dashboard_backend && health.dashboard_backend.port) || '9200'), status:(health.dashboard_backend && health.dashboard_backend.status) || 'ok'},
+    {name:'Cron', value:'fresh '+formatAge(hermes.freshness_seconds), status:hermes.status === 'ok' ? 'ok' : 'warn'},
+    {name:'Net', value:internet.latency_ms != null ? internet.latency_ms.toFixed(0)+' ms' : 'unreach', status:internet.reachable ? 'ok' : 'critical'},
+    {name:'Src', value:presentSources+'/'+sources.length+' files', status:presentSources ? 'ok' : 'warn'}
+  ];
+  document.getElementById('service-health').innerHTML = rows.map(function(row){
+    return '<div class="service-row">'
+      +'<span class="service-name">'+esc(row.name)+'</span>'
+      +'<span class="service-value" title="'+esc(row.value)+'">'+esc(truncateText(row.value, 18))+'</span>'
+      +'<span class="service-pill '+severityClass(row.status)+'">'+esc(compactStatus(row.status))+'</span>'
+      +'</div>';
+  }).join('');
+  setTextAndTitle('node-host', d.hostname || '--');
+  setTextAndTitle('node-ip', health.local_ip || '--');
+  setTextAndTitle('node-kernel', d.kernel || '--');
+  setTextAndTitle('node-python', d.python || '--');
+}
+
+function setTextAndTitle(id, value){
+  var el = document.getElementById(id);
+  if(!el) return;
+  var text = String(value == null ? '--' : value);
+  el.textContent = text;
+  el.title = text;
+}
+
+function renderCaptainConsole(d, warnings){
+  var load = d.load || [0,0,0];
+  var rd = formatSpeed(d.diskRd || 0), wt = formatSpeed(d.diskWt || 0);
+  var power = d.power || {};
+  setTextAndTitle('console-uptime', formatUptime(d.uptime || 0));
+  setTextAndTitle('console-load', load.map(function(v){ return Number(v || 0).toFixed(2); }).join(' '));
+  setTextAndTitle('console-procs', String(d.proc_count || 0));
+  setTextAndTitle('console-threads', String(d.threads || 0));
+  setTextAndTitle('console-power', power.summary || (d.temp ? d.temp.toFixed(1)+'°C' : '--'));
+  setTextAndTitle('console-io', 'R '+rd.v+rd.u+' / W '+wt.v+wt.u);
+
+  var procs = (d.procs || []).slice(0, 7);
+  renderProcessList('core-top-procs', procs.slice(0, 6));
+  renderProcessList('mission-top-procs', procs.slice(0, 3));
+  renderMissionContext(d, warnings || []);
+}
+
+function planSummary(plan){
+  if(!plan) return {text:'OpenAI --', status:'warn'};
+  var win = plan.primary_window || {};
+  var used = win.used_percent == null ? null : Number(win.used_percent || 0);
+  var pctText = used == null ? '--' : used.toFixed(0)+'%';
+  return {
+    text:'OpenAI '+pctText+' rst '+formatCountdown(win.reset_after_seconds || 0),
+    status:plan.limit_reached ? 'critical' : (plan.allowed ? 'ok' : 'warn')
+  };
+}
+function claudeSummary(claude){
+  if(!claude) return {text:'Claude --', status:'warn'};
+  var win = claude.five_hour_window || {};
+  var isApiSource = claude.usage_source === 'api';
+  var used = isApiSource && win.used_percent != null ? Number(win.used_percent || 0).toFixed(0)+'%' : formatTokenCount(win.total_tokens || 0);
+  return {
+    text:'Claude '+used+' '+truncateText(shortPath(claude.project_path || ''), 15),
+    status:isApiSource ? 'ok' : 'warn'
+  };
+}
+function renderMissionContext(d, warnings){
+  var target = document.getElementById('mission-context');
+  if(!target) return;
+  var plan = planSummary(d.openai_plan);
+  var claude = claudeSummary(d.claude_usage);
+  var modelText = formatModelLabel(d.model_info || {model:d.hermes_model || ''}) || '--';
+  var alert = warnings.length
+    ? {label:warnings[0].label || 'Warn', text:warnings[0].text || 'Attention required', status:warnings[0].kind === 'hit' ? 'critical' : 'warn'}
+    : {label:'Warn', text:'No current warnings', status:'ok'};
+  var rows = [
+    {label:'AI', text:truncateText(modelText, 26), status:'ok'},
+    {label:'GPT', text:plan.text, status:plan.status},
+    {label:'Claude', text:claude.text, status:claude.status},
+    alert
+  ];
+  target.innerHTML = rows.map(function(row){
+    var status = severityClass(row.status);
+    return '<div class="context-line '+status+'">'
+      +'<span class="context-label">'+esc(truncateText(row.label, 7))+'</span>'
+      +'<span class="context-text" title="'+esc(row.text)+'">'+esc(truncateText(row.text, 31))+'</span>'
+      +'</div>';
+  }).join('');
+}
+
+function renderProcessList(id, procs){
+  var target = document.getElementById(id);
+  if(!target) return;
+  if(!procs.length){
+    target.innerHTML = '<div class="warn-empty">No proc data</div>';
+  } else {
+    target.innerHTML = '<div class="proc-row proc-head"><span>PID</span><b>CMD</b><span>CPU</span><span>RAM</span></div>'
+      + procs.map(function(p){
+      var procName = truncateText(p.name || '', id === 'core-top-procs' ? 64 : 22);
+      return '<div class="proc-row">'
+        +'<span>'+esc(p.pid || '')+'</span>'
+        +'<b title="'+esc(p.name || '')+'">'+esc(procName)+'</b>'
+        +'<span>'+Number(p.cpu || 0).toFixed(0)+'%</span>'
+        +'<span>'+Number(p.mem || 0).toFixed(0)+'%</span>'
+        +'</div>';
+    }).join('');
+  }
+}
+
+function noteAgeLabel(value){
+  if(!value) return '--';
+  var ts = Date.parse(value);
+  if(!isFinite(ts)) return '--';
+  return formatAge((Date.now() - ts) / 1000);
+}
+function renderIntelList(id, items, emptyText){
+  var el = document.getElementById(id);
+  if(!items || !items.length){
+    el.innerHTML = '<div class="warn-empty">'+esc(emptyText)+'</div>';
+    return;
+  }
+  el.innerHTML = items.map(function(item){
+    return '<div class="intel-row">'
+      +'<b title="'+esc(item.name || '')+'">'+esc(item.name || '')+'</b>'
+      +'<span>'+esc(noteAgeLabel(item.updated_at))+'</span>'
+      +'</div>';
+  }).join('');
+}
+function droidMoodLine(warnings, d){
+  var hits = (warnings || []).filter(function(item){ return item.kind === 'hit'; }).length;
+  var ops = d.agent_ops || {};
+  var failed = Object.keys(ops).some(function(name){ return ops[name] && ops[name].state === 'failed'; });
+  if(hits || failed) return 'Critical: '+truncateText(warnings[0] ? warnings[0].text : 'attention required', 44);
+  if((warnings || []).length) return 'Attention: '+warnings.length+' item'+(warnings.length === 1 ? '' : 's');
+  return 'Nominal: systems clear, vault quiet.';
+}
+function renderCalendar(d){
+  var cal = d.calendar_upcoming || {};
+  var statusEl = document.getElementById('calendar-status');
+  if(statusEl) statusEl.textContent = compactStatus(cal.status || '--');
+  var el = document.getElementById('calendar-events');
+  if(!el) return;
+  var events = (cal.events || []).slice(0, 6);
+  if(!events.length){
+    var empty = cal.error ? ('Calendar '+(cal.status || 'error')) : 'No upcoming events';
+    el.innerHTML = '<div class="warn-empty" title="'+esc(cal.error || '')+'">'+esc(empty)+'</div>';
+    return;
+  }
+  el.innerHTML = events.map(function(event){
+    var detail = event.location ? event.location : (event.status || '');
+    return '<div class="control-item calendar-item">'
+      +'<span class="control-kicker calendar-kicker" title="'+esc(event.start || '')+'">'
+      +'<span class="calendar-day">'+esc(truncateText(event.day || event.time || '--', 9))+'</span>'
+      +'<span class="calendar-clock">'+esc(truncateText(event.clock || '--', 7))+'</span>'
+      +'</span>'
+      +'<div class="control-main">'
+      +'<div class="control-title" title="'+esc(event.title || '')+'">'+esc(truncateText(event.title || '(no title)', 34))+'</div>'
+      +'<div class="control-detail" title="'+esc(detail || '')+'">'+esc(truncateText(detail || 'calendar', 38))+'</div>'
+      +'</div></div>';
+  }).join('');
+}
+
+function renderControlRows(id, items, emptyText, label){
+  var el = document.getElementById(id);
+  if(!el) return;
+  items = (items || []).slice(0, id === 'todo-list' ? 5 : 4);
+  if(!items.length){
+    el.innerHTML = '<div class="warn-empty">'+esc(emptyText)+'</div>';
+    return;
+  }
+  el.innerHTML = items.map(function(item){
+    return '<div class="control-item warn">'
+      +'<span class="control-kicker">'+esc(truncateText(item.source || label || 'note', 10))+'</span>'
+      +'<div class="control-main">'
+      +'<div class="control-title" title="'+esc(item.title || '')+'">'+esc(truncateText(item.title || 'Untitled', 48))+'</div>'
+      +'<div class="control-detail">'+esc(label || 'open')+'</div>'
+      +'</div></div>';
+  }).join('');
+}
+
+function renderLifeControl(d){
+  renderCalendar(d);
+  var loops = d.obsidian_loops || {};
+  var todos = (loops.todos || []).slice(0, 8);
+  var open = (loops.open_loops || []).concat(loops.inbox || []).slice(0, 8);
+  var loopsStatus = document.getElementById('loops-status');
+  if(loopsStatus) loopsStatus.textContent = compactStatus(loops.status || '--');
+  document.getElementById('todo-count').textContent = String(todos.length);
+  document.getElementById('loop-count').textContent = String(open.length);
+  renderControlRows('todo-list', todos, loops.present ? 'No task markers' : 'Hermes vault missing', 'todo');
+  renderControlRows('loop-list', open, loops.present ? 'No open loops' : 'Hermes vault missing', 'loop');
+
+  var commands = (d.mission_control && d.mission_control.commands) || [];
+  var target = document.getElementById('mission-commands');
+  if(!target) return;
+  if(!commands.length){
+    target.innerHTML = '<div class="warn-empty">No commands</div>';
+    return;
+  }
+  target.innerHTML = commands.slice(0, 5).map(function(cmd){
+    var sev = severityClass(cmd.state || 'ok');
+    return '<div class="control-item command-item '+sev+'">'
+      +'<div class="control-main">'
+      +'<div class="control-title" title="'+esc(cmd.title || '')+'">'+esc(truncateText(cmd.title || 'Command', 28))+'</div>'
+      +'<div class="control-detail" title="'+esc(cmd.detail || '')+'">'+esc(truncateText(cmd.detail || '', 32))+'</div>'
+      +'</div>'
+      +'<span class="command-state '+sev+'">'+esc(compactStatus(cmd.state || 'ok'))+'</span>'
+      +'</div>';
+  }).join('');
+}
+
+function showPage(idx){
+  currentPage = ((idx % pageCount) + pageCount) % pageCount;
+  Array.prototype.forEach.call(document.querySelectorAll('.page'), function(page){
+    page.classList.toggle('active', Number(page.getAttribute('data-page')) === currentPage);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.page-tab'), function(tab){
+    tab.classList.toggle('active', Number(tab.getAttribute('data-page')) === currentPage);
+  });
+}
+function initPager(){
+  Array.prototype.forEach.call(document.querySelectorAll('.page-tab'), function(tab){
+    tab.addEventListener('click', function(){ showPage(Number(tab.getAttribute('data-page'))); });
+  });
+}
+
 function updateClock(){
   var n=new Date();
-  document.getElementById('clock').textContent=pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());
+  var timeText = pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());
+  document.getElementById('clock').textContent=timeText;
 }
 
 async function fetchMetrics(){
@@ -503,9 +1217,9 @@ async function fetchMetrics(){
     pctEl.style.color = color(cpuPct);
 
     var t = d.temp || 0;
-    document.getElementById('temp-val').textContent = '🌡 '+t.toFixed(1)+'°';
+    document.getElementById('temp-val').textContent = 'TMP '+t.toFixed(1)+'°';
     document.getElementById('temp-val').style.color = tempColor(t);
-    document.getElementById('freq-val').textContent = '⚡ '+d.cpuFreq;
+    document.getElementById('freq-val').textContent = 'CLK '+d.cpuFreq;
 
     var cores = cpuObj.cores || [];
     cores.forEach(function(v, i){
@@ -517,6 +1231,7 @@ async function fetchMetrics(){
 
     // ── Resources ────────────────────────────────────
     var mp = d.memory.used/d.memory.total*100;
+    updateHistories(d, cpuPct, mp);
     document.getElementById('ram-val').textContent = mp.toFixed(0)+'%';
     document.getElementById('ram-val').style.color = color(mp);
     document.getElementById('ram-detail').textContent = d.memory.used.toFixed(0)+' MB / '+d.memory.total.toFixed(0)+' MB';
@@ -553,16 +1268,16 @@ async function fetchMetrics(){
       document.getElementById('plan-primary-used').style.color = pc;
       document.getElementById('plan-secondary-used').textContent = usedWeek.toFixed(0)+'%';
       document.getElementById('plan-secondary-used').style.color = wc;
-      document.getElementById('plan-primary-reset').textContent = 'reset ' + formatCountdown(p5.reset_after_seconds || 0);
-      document.getElementById('plan-secondary-reset').textContent = 'reset ' + formatCountdown(pw.reset_after_seconds || 0);
-      document.getElementById('plan-primary-window').textContent = '5h window ' + formatWindowLabel(p5.limit_window_seconds || 0);
-      document.getElementById('plan-secondary-window').textContent = '1w window ' + formatWindowLabel(pw.limit_window_seconds || 0);
+      document.getElementById('plan-primary-reset').textContent = 'rst ' + formatCountdown(p5.reset_after_seconds || 0);
+      document.getElementById('plan-secondary-reset').textContent = 'rst ' + formatCountdown(pw.reset_after_seconds || 0);
+      document.getElementById('plan-primary-window').textContent = '5h ' + formatWindowLabel(p5.limit_window_seconds || 0);
+      document.getElementById('plan-secondary-window').textContent = '1w ' + formatWindowLabel(pw.limit_window_seconds || 0);
       var p5b=document.getElementById('plan-primary-bar');
       document.getElementById('plan-primary-bar').style.width=used5h+'%';
       document.getElementById('plan-primary-bar').style.background='linear-gradient(90deg,var(--cyan),'+pc+')';
       var pwb=document.getElementById('plan-secondary-bar');
       pwb.style.width=usedWeek+'%';
-      pwb.style.background='linear-gradient(90deg,var(--accent),'+wc+')';
+      pwb.style.background='linear-gradient(90deg,var(--blue),'+wc+')';
     } else {
       var pill = document.getElementById('plan-status-pill');
       pill.textContent = 'N/A'; pill.className = 'provider-pill';
@@ -586,7 +1301,7 @@ async function fetchMetrics(){
       var weekPct = isApiSource ? Number(c1w.used_percent || 0) : null;
       var fiveHourBar = fiveHourPct !== null ? Math.max(0, Math.min(100, fiveHourPct)) : 0;
       var weekBar = weekPct !== null ? Math.max(0, Math.min(100, weekPct)) : 0;
-      var topModel = claude.models && claude.models.length ? claude.models[0].model : 'No recent models';
+      var topModel = claude.models && claude.models.length ? truncateText(claude.models[0].model, 22) : 'No models';
       var cpill = document.getElementById('claude-status-pill');
       cpill.textContent = isApiSource ? (claude.subscription_type || 'plan').toUpperCase() : 'LOCAL';
       cpill.className = 'provider-pill ' + (isApiSource ? 'ok' : 'warn');
@@ -594,12 +1309,12 @@ async function fetchMetrics(){
       var c1wtok = c1w.total_tokens || 0;
       document.getElementById('claude-primary-used').textContent = fiveHourPct !== null ? fiveHourBar.toFixed(0)+'%' : (c5tok > 0 ? formatTokenCount(c5tok) : '--');
       document.getElementById('claude-secondary-used').textContent = weekPct !== null ? weekBar.toFixed(0)+'%' : (c1wtok > 0 ? formatTokenCount(c1wtok) : '--');
-      document.getElementById('claude-primary-reset').textContent = 'reset ' + formatCountdown(c5.reset_after_seconds || 0);
-      document.getElementById('claude-secondary-reset').textContent = 'reset ' + formatCountdown(c1w.reset_after_seconds || 0);
+      document.getElementById('claude-primary-reset').textContent = 'rst ' + formatCountdown(c5.reset_after_seconds || 0);
+      document.getElementById('claude-secondary-reset').textContent = 'rst ' + formatCountdown(c1w.reset_after_seconds || 0);
       document.getElementById('claude-primary-bar').style.width = fiveHourBar + '%';
       document.getElementById('claude-secondary-bar').style.width = weekBar + '%';
-      document.getElementById('claude-cost').textContent = 'Session ' + formatMoney(claude.recent_session_cost_usd || 0) + ' • ' + topModel;
-      document.getElementById('claude-project').textContent = formatTokenCount(claude.recent_session_total_tokens || 0) + ' tok • ' + shortPath(claude.project_path || '');
+      document.getElementById('claude-cost').textContent = formatMoney(claude.recent_session_cost_usd || 0) + ' ' + topModel;
+      document.getElementById('claude-project').textContent = formatTokenCount(claude.recent_session_total_tokens || 0) + ' tok ' + truncateText(shortPath(claude.project_path || ''), 18);
     } else {
       var cpill = document.getElementById('claude-status-pill');
       cpill.textContent = 'N/A'; cpill.className = 'provider-pill';
@@ -616,37 +1331,42 @@ async function fetchMetrics(){
     // ── Cron jobs ────────────────────────────────────
     var cdiv=document.getElementById('cron-jobs'); cdiv.innerHTML='';
     if(d.crons && d.crons.length){
-      d.crons.forEach(function(c){
+      cdiv.innerHTML = d.crons.slice(0, 7).map(function(c){
         var state=(c.state||'active')==='paused'?'paused':'active';
-        var owner=esc(c.owner||c.profile||'');
-        var ownerBadge=owner?'<span class="cron-owner">'+owner+'</span>':'';
-        var statusDot=c.last_status==='ok'
-          ?'<span style="color:var(--green);font-size:11px;">✓</span>'
-          :c.last_status
-            ?'<span style="color:var(--red);font-size:11px;">✗</span>'
-            :'';
-        cdiv.innerHTML+='<div class="cron-item">'
+        var owner=c.owner||c.profile||'';
+        var ownerBadge=owner?'<span class="cron-owner">'+esc(truncateText(owner, 8))+'</span>':'';
+        var statusText=c.last_status==='ok'?'OK':(c.last_status?String(c.last_status):'--');
+        var statusClass=c.last_status && c.last_status !== 'ok' ? 'failed' : state;
+        var lastText=c.last_run ? ('last '+c.last_run) : 'not run';
+        return '<div class="cron-item">'
           +'<div class="cron-strip '+state+'"></div>'
-          +'<div class="cron-body">'
-          +'<div class="cron-name">'+statusDot+ownerBadge+esc(c.name||'Unnamed')
-          +' <span class="cron-badge '+state+'">'+state+'</span></div>'
-          +'<div class="cron-meta">'+esc(c.next_run||'N/A')+'</div>'
-          +'</div></div>';
-      });
+          +'<div class="cron-when" title="'+esc(c.next_run || 'N/A')+'">'+esc(c.next_run || 'N/A')+'</div>'
+          +'<div class="cron-main">'
+          +'<div class="cron-name">'+ownerBadge+'<span class="cron-name-text" title="'+esc(c.name||'Unnamed')+'">'+esc(truncateText(c.name||'Unnamed', 30))+'</span></div>'
+          +'<div class="cron-subline"><span title="'+esc(c.schedule || '')+'">'+esc(truncateText(c.schedule || 'schedule --', 24))+'</span><span title="'+esc(lastText)+'">'+esc(truncateText(lastText, 22))+'</span></div>'
+          +'</div>'
+          +'<div class="cron-state-cell"><span class="cron-badge '+statusClass+'">'+esc(compactStatus(statusText))+'</span><span class="cron-last">'+esc(compactStatus(state))+'</span></div>'
+          +'</div>';
+      }).join('');
     } else {
-      cdiv.innerHTML='<div style="color:var(--dim);font-size:10px;padding-top:8px;">No jobs scheduled</div>';
+      cdiv.innerHTML='<div style="color:var(--muted);font-size:10px;padding-top:8px;">No jobs scheduled</div>';
     }
 
     // ── Agent Ops / Attention ───────────────────────
     renderAgentOps(d);
-    renderWarnings(d, null);
+    renderDroidStatus(d);
+    var warnings = renderWarnings(d, null);
+    renderMissionLog(d);
+    renderServiceHealth(d);
+    renderCaptainConsole(d, warnings);
+    renderLifeControl(d);
 
     // ── Model + status ───────────────────────────────
     var modelInfo = d.model_info || {model:d.hermes_model||'', provider:''};
     var modelLabel = formatModelLabel(modelInfo);
     if(modelLabel){
       var modelTag = document.getElementById('model-tag');
-      modelTag.textContent = '🤖 '+modelLabel;
+      modelTag.textContent = truncateText(modelLabel, 28);
       modelTag.title = modelInfo.provider ? (modelInfo.provider+' / '+modelInfo.model) : modelInfo.model;
     }
     document.getElementById('live-dot').className='dot on pulse';
@@ -667,6 +1387,7 @@ function exitDashboard(){
 }
 
 setInterval(updateClock,1000); updateClock();
+initPager();
 fetchMetrics();
 setInterval(fetchMetrics,2000);
 </script>

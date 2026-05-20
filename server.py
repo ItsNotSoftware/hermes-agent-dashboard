@@ -4,11 +4,13 @@
 import base64
 import json
 import os
+import re
+import socket
 import subprocess
 import time
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 PORT = 9200
 DASHBOARD_DIR = Path(__file__).parent
@@ -23,6 +25,15 @@ AUTH_PATH = Path.home() / '.hermes' / 'auth.json'
 # Cache provider usage data
 plan_cache = {'data': None, 'ts': 0}
 claude_cache = {'data': None, 'ts': 0}
+service_health_cache = {'data': None, 'ts': 0}
+vault_cache = {'data': None, 'ts': 0}
+git_cache = {'data': None, 'ts': 0}
+calendar_cache = {'data': None, 'ts': 0}
+obsidian_loops_cache = {'data': None, 'ts': 0}
+
+GOOGLE_API_SCRIPT = Path.home() / '.hermes' / 'skills' / 'productivity' / 'google-workspace' / 'scripts' / 'google_api.py'
+VAULT_PATH = Path.home() / 'Documents' / 'Obsidian Vault'
+HERMES_VAULT_PATH = VAULT_PATH / 'Hermes'
 
 
 def _parse_iso_timestamp(value):
@@ -30,6 +41,65 @@ def _parse_iso_timestamp(value):
         return datetime.fromisoformat(str(value).replace('Z', '+00:00')).timestamp()
     except Exception:
         return None
+
+
+def _format_local_timestamp(value):
+    ts = _parse_iso_timestamp(value)
+    if ts is None:
+        return ''
+    try:
+        return datetime.fromtimestamp(ts).strftime('%d/%m %H:%M')
+    except Exception:
+        return str(value)[:16]
+
+
+def _iso_now():
+    return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+
+
+def _compact_title(value, max_len=84):
+    text = str(value or '')
+    text = re.sub(r'<!--.*?-->', '', text)
+    text = re.sub(r'`([^`]*)`', r'\1', text)
+    text = re.sub(r'!\[[^\]]*\]\([^)]+\)', '', text)
+    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+    text = re.sub(r'\[\[([^\]|]+)(?:\|([^\]]+))?\]\]', lambda m: m.group(2) or m.group(1), text)
+    text = re.sub(r'https?://\S+', '', text)
+    text = re.sub(r'[#*_~>|]', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip(' -:\t')
+    if len(text) > max_len:
+        text = text[:max_len - 1].rstrip() + '…'
+    return text
+
+
+def _event_time_parts(start_value):
+    if not start_value:
+        return {'label': '--', 'day': '--', 'clock': '--'}
+    try:
+        raw = str(start_value)
+        if len(raw) == 10:
+            dt = datetime.fromisoformat(raw)
+            day = dt.strftime('%a %d/%m').upper()
+            return {'label': f'{day} all day', 'day': day, 'clock': 'ALL DAY'}
+        dt = datetime.fromisoformat(raw.replace('Z', '+00:00')).astimezone()
+        day = dt.strftime('%a %d/%m').upper()
+        clock = dt.strftime('%H:%M')
+        return {'label': f'{day} {clock}', 'day': day, 'clock': clock}
+    except Exception:
+        fallback = str(start_value)[:16]
+        return {'label': fallback, 'day': fallback[:6] or '--', 'clock': fallback[6:].strip() or '--'}
+
+
+def _event_time_label(start_value):
+    return _event_time_parts(start_value)['label']
+
+
+def _compact_command_error(stdout, stderr, fallback):
+    text = str(stderr or stdout or fallback or '')
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if lines:
+        text = lines[-1]
+    return _compact_title(text, 120)
 
 
 def _claude_project_dir(project_path):
@@ -312,6 +382,46 @@ def get_disk_io():
     return {'rd': rd_speed, 'wt': wt_speed}
 
 
+def get_power_status():
+    """Return cheap Raspberry Pi thermal/throttle metadata without requiring sudo."""
+    status = {
+        'available': False,
+        'throttled_hex': '',
+        'under_voltage': False,
+        'freq_capped': False,
+        'throttled': False,
+        'soft_temp_limit': False,
+        'summary': 'unknown',
+    }
+    try:
+        result = subprocess.run(['vcgencmd', 'get_throttled'], capture_output=True, text=True, timeout=2)
+        raw = result.stdout.strip()
+        if result.returncode != 0 or '=' not in raw:
+            return status
+        value = int(raw.split('=', 1)[1], 16)
+        status.update({
+            'available': True,
+            'throttled_hex': hex(value),
+            'under_voltage': bool(value & 0x1 or value & 0x10000),
+            'freq_capped': bool(value & 0x2 or value & 0x20000),
+            'throttled': bool(value & 0x4 or value & 0x40000),
+            'soft_temp_limit': bool(value & 0x8 or value & 0x80000),
+        })
+        flags = []
+        if status['under_voltage']:
+            flags.append('undervoltage')
+        if status['freq_capped']:
+            flags.append('freq cap')
+        if status['throttled']:
+            flags.append('throttled')
+        if status['soft_temp_limit']:
+            flags.append('soft temp')
+        status['summary'] = ', '.join(flags) if flags else 'nominal'
+        return status
+    except Exception:
+        return status
+
+
 def get_top_procs(n=10):
     try:
         result = subprocess.run(['ps', 'aux', '--sort=-%cpu'], capture_output=True, text=True, timeout=5)
@@ -497,6 +607,8 @@ def _read_cron_jobs_for_profile(owner, path):
             else:
                 next_str = 'N/A'
 
+            last_run_at = j.get('last_run_at', '') or j.get('last_finished_at', '') or j.get('last_started_at', '')
+
             job_info = {
                 'id': j.get('id', ''),
                 'name': j.get('name', 'Unnamed'),
@@ -506,6 +618,8 @@ def _read_cron_jobs_for_profile(owner, path):
                 'state': display_state,
                 'next_run': next_str,
                 'next_run_at': j.get('next_run_at', ''),
+                'last_run': _format_local_timestamp(last_run_at) if last_run_at else '',
+                'last_run_at': last_run_at,
                 'last_status': j.get('last_status', None),
                 'model': j.get('model', ''),
             }
@@ -569,6 +683,79 @@ def get_agent_ops(crons):
             ],
         }
     return result
+
+
+def _mission_log_sort_key(item):
+    ts = _parse_iso_timestamp(item.get('ts'))
+    return ts if ts is not None else 0
+
+
+def build_mission_log(crons, plan_data, claude_data, memory, disk, temp):
+    """Build a compact timeline from cron runs and current warning-grade events."""
+    items = []
+
+    for job in crons:
+        last_run_at = job.get('last_run_at')
+        if not last_run_at:
+            continue
+        status = job.get('last_status') or 'unknown'
+        severity = 'ok' if status == 'ok' else 'critical'
+        items.append({
+            'ts': last_run_at,
+            'time': job.get('last_run') or _format_local_timestamp(last_run_at),
+            'label': job.get('owner') or job.get('profile') or 'cron',
+            'title': job.get('name') or 'Unnamed cron',
+            'detail': 'last run ' + status,
+            'severity': severity,
+        })
+
+    now = _iso_now()
+    if temp >= 80:
+        items.append({'ts': now, 'time': 'now', 'label': 'TEMP', 'title': 'CPU thermal critical', 'detail': f'{temp:.1f}C', 'severity': 'critical'})
+    elif temp >= 75:
+        items.append({'ts': now, 'time': 'now', 'label': 'TEMP', 'title': 'CPU thermal warning', 'detail': f'{temp:.1f}C', 'severity': 'warn'})
+
+    def _pct(used, total):
+        try:
+            return float(used or 0) / float(total or 0) * 100.0 if total else 0.0
+        except Exception:
+            return 0.0
+
+    ram_pct = _pct(memory.get('used'), memory.get('total')) if isinstance(memory, dict) else 0.0
+    disk_pct = _pct(disk.get('used'), disk.get('total')) if isinstance(disk, dict) else 0.0
+    if ram_pct >= 85:
+        items.append({'ts': now, 'time': 'now', 'label': 'RAM', 'title': 'Memory pressure', 'detail': f'{ram_pct:.0f}% used', 'severity': 'critical' if ram_pct >= 95 else 'warn'})
+    if disk_pct >= 85:
+        items.append({'ts': now, 'time': 'now', 'label': 'DISK', 'title': 'Disk pressure', 'detail': f'{disk_pct:.0f}% used', 'severity': 'critical' if disk_pct >= 95 else 'warn'})
+
+    def _usage_event(provider, window_label, window_data):
+        if not isinstance(window_data, dict) or window_data.get('used_percent') is None:
+            return
+        used = float(window_data.get('used_percent') or 0)
+        if used >= 80:
+            items.append({
+                'ts': now,
+                'time': 'now',
+                'label': provider,
+                'title': window_label + ' usage high',
+                'detail': f'{used:.0f}% used',
+                'severity': 'critical' if used >= 90 else 'warn',
+            })
+
+    if isinstance(plan_data, dict):
+        if plan_data.get('limit_reached'):
+            items.append({'ts': now, 'time': 'now', 'label': 'GPT', 'title': 'OpenAI limit reached', 'detail': 'usage gate closed', 'severity': 'critical'})
+        elif not plan_data.get('allowed', True):
+            items.append({'ts': now, 'time': 'now', 'label': 'GPT', 'title': 'OpenAI usage restricted', 'detail': 'not currently allowed', 'severity': 'warn'})
+        _usage_event('GPT', '5h', plan_data.get('primary_window'))
+        _usage_event('GPT', '1w', plan_data.get('secondary_window'))
+
+    if isinstance(claude_data, dict) and claude_data.get('usage_source') == 'api':
+        _usage_event('Claude', '5h', claude_data.get('five_hour_window'))
+        _usage_event('Claude', '1w', claude_data.get('one_week_window'))
+
+    items.sort(key=_mission_log_sort_key, reverse=True)
+    return items[:8]
 
 
 def _decode_jwt_payload(token):
@@ -1042,6 +1229,414 @@ def fetch_claude_usage():
         return claude_cache['data']
 
 
+def _get_local_ip():
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.settimeout(0.25)
+            sock.connect(('1.1.1.1', 80))
+            return sock.getsockname()[0]
+    except Exception:
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except Exception:
+            return ''
+
+
+def _ping_internet():
+    try:
+        result = subprocess.run(
+            ['ping', '-c', '1', '-W', '1', '1.1.1.1'],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        latency_ms = None
+        if result.returncode == 0:
+            marker = 'time='
+            for part in result.stdout.split():
+                if part.startswith(marker):
+                    latency_ms = float(part[len(marker):])
+                    break
+        return {'reachable': result.returncode == 0, 'latency_ms': latency_ms}
+    except Exception:
+        return {'reachable': False, 'latency_ms': None}
+
+
+def get_service_health():
+    global service_health_cache
+    now = time.time()
+    if service_health_cache['data'] and (now - service_health_cache['ts']) < 30:
+        return service_health_cache['data']
+
+    cron_sources = []
+    mtimes = []
+    for owner, path in CRON_JOB_SOURCES:
+        exists = path.exists()
+        mtime = None
+        age_seconds = None
+        if exists:
+            try:
+                mtime = path.stat().st_mtime
+                age_seconds = max(0, int(now - mtime))
+                mtimes.append(mtime)
+            except Exception:
+                pass
+        cron_sources.append({
+            'owner': owner,
+            'path': str(path),
+            'exists': exists,
+            'age_seconds': age_seconds,
+            'updated_at': datetime.fromtimestamp(mtime).isoformat() if mtime else '',
+        })
+
+    ping = _ping_internet()
+    data = {
+        'dashboard_backend': {
+            'status': 'ok',
+            'port': PORT,
+            'checked_at': _iso_now(),
+        },
+        'hermes_cron': {
+            'status': 'ok' if mtimes else 'missing',
+            'freshness_seconds': max(0, int(now - max(mtimes))) if mtimes else None,
+            'sources': cron_sources,
+        },
+        'internet': ping,
+        'local_ip': _get_local_ip(),
+    }
+    service_health_cache = {'data': data, 'ts': now}
+    return data
+
+
+def get_calendar_upcoming():
+    """Return upcoming Google Calendar events through the existing Hermes read-only list command."""
+    global calendar_cache
+    now = time.time()
+    if calendar_cache['data'] and (now - calendar_cache['ts']) < 120:
+        return calendar_cache['data']
+
+    data = {
+        'source': str(GOOGLE_API_SCRIPT),
+        'status': 'missing' if not GOOGLE_API_SCRIPT.exists() else 'ok',
+        'checked_at': _iso_now(),
+        'events': [],
+        'error': '',
+    }
+    if not GOOGLE_API_SCRIPT.exists():
+        calendar_cache = {'data': data, 'ts': now}
+        return data
+
+    try:
+        result = subprocess.run(
+            ['python3', str(GOOGLE_API_SCRIPT), 'calendar', 'list', '--max', '6'],
+            capture_output=True,
+            text=True,
+            timeout=7,
+        )
+        if result.returncode != 0:
+            err = _compact_command_error(result.stdout, result.stderr, f'exit {result.returncode}')
+            raise RuntimeError(err or f'calendar command exited {result.returncode}')
+
+        raw_events = json.loads(result.stdout or '[]')
+        if not isinstance(raw_events, list):
+            raw_events = []
+        events = []
+        for item in raw_events[:6]:
+            if not isinstance(item, dict):
+                continue
+            start = str(item.get('start') or '')
+            title = _compact_title(item.get('summary') or '(no title)', 72)
+            if not title:
+                title = '(no title)'
+            time_parts = _event_time_parts(start)
+            events.append({
+                'title': title,
+                'start': start,
+                'time': time_parts['label'],
+                'day': time_parts['day'],
+                'clock': time_parts['clock'],
+                'location': _compact_title(item.get('location') or '', 48),
+                'status': _compact_title(item.get('status') or '', 24),
+            })
+        data['events'] = events[:6]
+    except subprocess.TimeoutExpired:
+        data['status'] = 'timeout'
+        data['error'] = 'calendar list timed out'
+    except Exception as exc:
+        data['status'] = 'error'
+        data['error'] = _compact_title(str(exc), 120)
+
+    # Keep a stale successful list visible during transient Google/network failures.
+    if data['status'] != 'ok' and calendar_cache['data'] and calendar_cache['data'].get('events'):
+        stale = dict(calendar_cache['data'])
+        stale['status'] = data['status']
+        stale['error'] = data['error']
+        stale['checked_at'] = data['checked_at']
+        data = stale
+
+    calendar_cache = {'data': data, 'ts': now}
+    return data
+
+
+def _empty_obsidian_loops():
+    return {
+        'path': str(HERMES_VAULT_PATH),
+        'present': HERMES_VAULT_PATH.exists() and HERMES_VAULT_PATH.is_dir(),
+        'checked_at': _iso_now(),
+        'todos': [],
+        'open_loops': [],
+        'inbox': [],
+        'task_count': 0,
+        'loop_count': 0,
+        'inbox_count': 0,
+        'status': 'ok',
+        'error': '',
+    }
+
+
+def _task_title_from_line(line):
+    match = re.match(r'^\s*[-*+]\s+\[(?: |todo|TODO)\]\s+(.+?)\s*$', line)
+    if not match:
+        return ''
+    return _compact_title(match.group(1), 84)
+
+
+def _bullet_title_from_line(line):
+    if re.match(r'^\s*[-*+]\s+\[[xX]\]\s+', line):
+        return ''
+    line = re.sub(r'^\s*(?:[-*+]|\d+[.)])\s+', '', line).strip()
+    line = re.sub(r'^\[(?: |todo|TODO)\]\s+', '', line).strip()
+    return _compact_title(line, 84)
+
+
+def _append_unique(items, seen, title, source):
+    if not title:
+        return
+    lowered = title.lower()
+    skip = {
+        '_add new captures below this line._',
+        '_add active loops here._',
+        'add new captures below this line.',
+        'add active loops here.',
+    }
+    if lowered in skip or lowered == '-':
+        return
+    key = (lowered, source)
+    if key in seen:
+        return
+    seen.add(key)
+    items.append({'title': title, 'source': source})
+
+
+def _collect_note_bullets(path, source, section_names=None, cap=8):
+    items = []
+    seen = set()
+    in_allowed_section = section_names is None
+    try:
+        for raw_line in path.read_text(errors='ignore').splitlines():
+            line = raw_line.rstrip()
+            heading = re.match(r'^(#{1,6})\s+(.+?)\s*$', line)
+            if heading:
+                title = _compact_title(heading.group(2), 64).lower()
+                in_allowed_section = section_names is None or title in section_names
+                continue
+            if not in_allowed_section:
+                continue
+            if re.match(r'^\s*(?:[-*+]|\d+[.)])\s+', line):
+                title = _task_title_from_line(line) or _bullet_title_from_line(line)
+                _append_unique(items, seen, title, source)
+                if len(items) >= cap:
+                    break
+    except Exception:
+        return items
+    return items
+
+
+def get_obsidian_loops():
+    """Read only the requested Hermes notes plus unchecked task markers in Hermes/*.md."""
+    global obsidian_loops_cache
+    now = time.time()
+    if obsidian_loops_cache['data'] and (now - obsidian_loops_cache['ts']) < 60:
+        return obsidian_loops_cache['data']
+
+    data = _empty_obsidian_loops()
+    if not data['present']:
+        data['status'] = 'missing'
+        obsidian_loops_cache = {'data': data, 'ts': now}
+        return data
+
+    try:
+        inbox_path = HERMES_VAULT_PATH / 'Inbox.md'
+        loops_path = HERMES_VAULT_PATH / 'Open Loops.md'
+        if inbox_path.exists():
+            data['inbox'] = _collect_note_bullets(
+                inbox_path,
+                'Inbox',
+                {'unprocessed captures'},
+                cap=5,
+            )
+        if loops_path.exists():
+            data['open_loops'] = _collect_note_bullets(
+                loops_path,
+                'Open Loops',
+                {'active open loops', 'urgent / time-sensitive', 'projects', 'thesis / university', 'waiting on someone'},
+                cap=6,
+            )
+
+        todos = []
+        seen = set()
+        for path in sorted(HERMES_VAULT_PATH.glob('*.md')):
+            try:
+                for line in path.read_text(errors='ignore').splitlines():
+                    title = _task_title_from_line(line)
+                    if title:
+                        _append_unique(todos, seen, title, path.stem)
+                    if len(todos) >= 8:
+                        break
+            except Exception:
+                continue
+            if len(todos) >= 8:
+                break
+        data['todos'] = todos[:8]
+        data['task_count'] = len(data['todos'])
+        data['loop_count'] = len(data['open_loops'])
+        data['inbox_count'] = len(data['inbox'])
+    except Exception as exc:
+        data['status'] = 'error'
+        data['error'] = _compact_title(str(exc), 120)
+
+    obsidian_loops_cache = {'data': data, 'ts': now}
+    return data
+
+
+def build_mission_control(calendar_data, obsidian_data, crons):
+    events = calendar_data.get('events', []) if isinstance(calendar_data, dict) else []
+    todos = obsidian_data.get('todos', []) if isinstance(obsidian_data, dict) else []
+    loops = obsidian_data.get('open_loops', []) if isinstance(obsidian_data, dict) else []
+    inbox = obsidian_data.get('inbox', []) if isinstance(obsidian_data, dict) else []
+    failed = [job for job in crons if job.get('last_status') and job.get('last_status') != 'ok']
+    paused = [job for job in crons if job.get('state') == 'paused']
+    commands = [
+        {'title': 'Review today', 'detail': f'{len(events)} calendar items queued', 'state': 'ok' if events else 'idle'},
+        {'title': 'Process loops', 'detail': f'{len(todos) + len(loops)} todos/open loops', 'state': 'warn' if todos or loops else 'ok'},
+        {'title': 'Clear inbox', 'detail': f'{len(inbox)} unprocessed captures', 'state': 'warn' if inbox else 'ok'},
+        {'title': 'Check droids', 'detail': f'{len(failed)} failed / {len(paused)} paused jobs', 'state': 'critical' if failed else ('warn' if paused else 'ok')},
+    ]
+    return {'commands': commands}
+
+
+def get_vault_intel():
+    """Return safe Obsidian vault metadata only; never read note contents."""
+    global vault_cache
+    now = time.time()
+    if vault_cache['data'] and (now - vault_cache['ts']) < 60:
+        return vault_cache['data']
+
+    vault_path = VAULT_PATH
+    data = {
+        'path': str(vault_path),
+        'present': vault_path.exists() and vault_path.is_dir(),
+        'note_count': 0,
+        'vault_size_bytes': 0,
+        'recent_notes': [],
+        'ksp_notes': [],
+    }
+    if not data['present']:
+        vault_cache = {'data': data, 'ts': now}
+        return data
+
+    notes = []
+    ksp_notes = []
+    total_size = 0
+    try:
+        for path in vault_path.rglob('*'):
+            if not path.is_file():
+                continue
+            try:
+                stat = path.stat()
+            except Exception:
+                continue
+            total_size += stat.st_size
+            if path.suffix.lower() != '.md':
+                continue
+            rel = path.relative_to(vault_path)
+            rel_name = str(rel.with_suffix(''))
+            notes.append({'name': rel_name, 'mtime': stat.st_mtime})
+            if 'ksp' in rel_name.lower():
+                ksp_notes.append({'name': rel_name, 'mtime': stat.st_mtime})
+    except Exception:
+        pass
+
+    notes.sort(key=lambda item: item['mtime'], reverse=True)
+    ksp_notes.sort(key=lambda item: item['mtime'], reverse=True)
+    data.update({
+        'note_count': len(notes),
+        'vault_size_bytes': total_size,
+        'recent_notes': [
+            {'name': item['name'], 'updated_at': datetime.fromtimestamp(item['mtime']).isoformat()}
+            for item in notes[:6]
+        ],
+        'ksp_notes': [
+            {'name': item['name'], 'updated_at': datetime.fromtimestamp(item['mtime']).isoformat()}
+            for item in ksp_notes[:4]
+        ],
+    })
+    vault_cache = {'data': data, 'ts': now}
+    return data
+
+
+def _git_run(args):
+    try:
+        result = subprocess.run(
+            ['git', *args],
+            cwd=str(DASHBOARD_DIR),
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if result.returncode != 0:
+            return ''
+        return result.stdout.strip()
+    except Exception:
+        return ''
+
+
+def get_repo_status():
+    """Return local git metadata only. Does not fetch or contact remotes."""
+    global git_cache
+    now = time.time()
+    if git_cache['data'] and (now - git_cache['ts']) < 10:
+        return git_cache['data']
+
+    branch = _git_run(['branch', '--show-current'])
+    head = _git_run(['rev-parse', '--short', 'HEAD'])
+    porcelain = _git_run(['status', '--porcelain'])
+    ahead = 0
+    behind = 0
+    upstream = _git_run(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])
+    if upstream:
+        counts = _git_run(['rev-list', '--left-right', '--count', f'HEAD...{upstream}']).split()
+        if len(counts) == 2:
+            try:
+                ahead = int(counts[0])
+                behind = int(counts[1])
+            except Exception:
+                ahead = 0
+                behind = 0
+
+    data = {
+        'branch': branch,
+        'head': head,
+        'dirty': bool(porcelain),
+        'changed_files': len([line for line in porcelain.splitlines() if line.strip()]),
+        'upstream': upstream,
+        'ahead': ahead,
+        'behind': behind,
+    }
+    git_cache = {'data': data, 'ts': now}
+    return data
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(DASHBOARD_DIR), **kwargs)
@@ -1086,6 +1681,8 @@ class Handler(SimpleHTTPRequestHandler):
             net = get_network()
             disk_io = get_disk_io()
             memory, swap = get_memory_and_swap()
+            disk = get_disk()
+            temp = get_temp()
             
             # System info
             hostname = ''
@@ -1110,24 +1707,31 @@ class Handler(SimpleHTTPRequestHandler):
             
             model_info = get_hermes_model_info()
             crons = get_cron_jobs()
+            service_health = get_service_health()
+            calendar_upcoming = get_calendar_upcoming()
+            obsidian_loops = get_obsidian_loops()
             status = {
                 'hermes_model': model_info.get('model', ''),
                 'model_info': model_info,
-                'temp': get_temp(),
+                'temp': temp,
                 'cpu': get_cpu_usage(),  # {'total': %, 'max_core': %}
                 'memory': memory,
                 'swap': swap,
-                'disk': get_disk(),
+                'disk': disk,
                 'cpuFreq': get_cpu_freq(),
                 'uptime': get_uptime(),
                 'netRx': net['rx'],
                 'netTx': net['tx'],
                 'diskRd': disk_io.get('rd', 0),
                 'diskWt': disk_io.get('wt', 0),
+                'load': get_load(),
+                'power': get_power_status(),
                 # Keep the process list in the API for lightweight diagnostics.
                 'procs': get_top_procs(7),
                 'crons': crons,
                 'agent_ops': get_agent_ops(crons),
+                'mission_log': build_mission_log(crons, plan_data, claude_data, memory, disk, temp),
+                'service_health': service_health,
                 'hostname': hostname,
                 'kernel': kernel,
                 'python': python_ver,
@@ -1135,6 +1739,11 @@ class Handler(SimpleHTTPRequestHandler):
                 'threads': threads,
                 'openai_plan': plan_data,
                 'claude_usage': claude_data,
+                'vault_intel': get_vault_intel(),
+                'repo_status': get_repo_status(),
+                'calendar_upcoming': calendar_upcoming,
+                'obsidian_loops': obsidian_loops,
+                'mission_control': build_mission_control(calendar_upcoming, obsidian_loops, crons),
             }
             
             self.wfile.write(json.dumps(status).encode())
