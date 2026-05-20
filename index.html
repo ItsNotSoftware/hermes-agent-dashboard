@@ -49,7 +49,7 @@
   .model-tag { min-width:0; max-width:184px; padding:3px 7px; border-radius:999px; font-size:11px; color:var(--cyan); border:1px solid rgba(var(--cyan-rgb),.28); background:rgba(var(--cyan-rgb),.08); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .quit-btn { background:rgba(var(--blue-rgb),.08); border:1px solid rgba(var(--blue-rgb),.28); color:var(--muted); border-radius:6px; cursor:pointer; padding:3px 7px; font-size:11px; font-family:inherit; }
 
-  .pager { position:relative; z-index:1; display:grid; grid-template-columns:repeat(5,1fr); gap:5px; min-height:0; }
+  .pager { position:relative; z-index:1; display:grid; grid-template-columns:repeat(4,1fr); gap:5px; min-height:0; }
   .page-tab {
     min-width:0; border:1px solid var(--line); background:rgba(var(--panel-rgb),.82); color:var(--muted);
     border-radius:7px; padding:0 6px; font:inherit; font-size:12px; text-transform:uppercase;
@@ -83,14 +83,10 @@
   .captain-card { grid-column:1; grid-row:2; min-width:0; }
   .context-card { grid-column:3; grid-row:2; min-width:0; }
   .proc-card { grid-column:3; grid-row:3; min-width:0; }
-  .telemetry-grid { display:grid; grid-template-columns:1fr 1fr 1fr; grid-template-rows:116px 116px 112px; gap:6px; height:100%; }
-  .spark-card { flex-direction:column; min-width:0; }
-  .spark-wide { grid-column:span 2; }
-  .vault-grid { display:grid; grid-template-columns:260px 1fr 238px; grid-template-rows:176px 180px; gap:6px; height:100%; }
-  .vault-summary-card { grid-column:1; grid-row:1; }
-  .vault-recent-card { grid-column:2; grid-row:1 / span 2; }
-  .vault-ksp-card { grid-column:1; grid-row:2; }
-  .vault-repo-card { grid-column:3; grid-row:1 / span 2; }
+  .control-grid { display:grid; grid-template-columns:286px minmax(0,1fr) 226px; grid-template-rows:1fr 1fr; gap:6px; height:100%; }
+  .calendar-card { grid-column:1; grid-row:1 / span 2; min-width:0; }
+  .loops-card { grid-column:2; grid-row:1 / span 2; min-width:0; }
+  .commands-card { grid-column:3; grid-row:1 / span 2; min-width:0; }
 
   /* ── CPU widget ──────────────────────────────────── */
   .cpu-main { display:grid; grid-template-columns:86px minmax(0,1fr); grid-template-rows:minmax(0,1fr) auto; column-gap:12px; row-gap:6px; flex:1; height:100%; min-width:0; }
@@ -310,6 +306,28 @@
   .proc-card .proc-row b { font-size:11px; }
   .proc-card .proc-head { min-height:17px; }
 
+  /* ── Control / life ─────────────────────────────── */
+  .control-list { flex:1; min-height:0; display:flex; flex-direction:column; gap:5px; overflow:hidden; }
+  .control-item { min-width:0; display:grid; grid-template-columns:50px minmax(0,1fr); gap:7px; align-items:center; min-height:39px; padding:5px 6px; border-radius:6px; background:rgba(255,255,255,0.025); border-left:3px solid rgba(var(--blue-rgb),0.52); }
+  .calendar-item { grid-template-columns:64px minmax(0,1fr); }
+  .control-item.warn { border-left-color:var(--amber); background:rgba(var(--amber-rgb),0.08); }
+  .control-item.critical { border-left-color:var(--magenta); background:rgba(var(--violet-rgb),0.10); }
+  .control-kicker { font-size:10px; color:var(--cyan); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .calendar-kicker { display:flex; flex-direction:column; gap:1px; line-height:1.05; overflow:visible; }
+  .calendar-day { font-size:9px; color:var(--cyan); letter-spacing:.2px; white-space:nowrap; }
+  .calendar-clock { font-size:13px; color:var(--text); font-weight:bold; letter-spacing:.3px; white-space:nowrap; }
+  .control-main { min-width:0; }
+  .control-title { font-size:12px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .control-detail { margin-top:2px; font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .loops-stack { flex:1; min-height:0; display:grid; grid-template-rows:1fr 1fr; gap:6px; }
+  .loop-section { min-height:0; display:flex; flex-direction:column; gap:4px; overflow:hidden; }
+  .loop-heading { display:flex; justify-content:space-between; gap:8px; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:4px; }
+  .command-item { grid-template-columns:minmax(0,1fr) 44px; min-height:50px; align-items:start; }
+  .command-state { justify-self:end; font-size:10px; text-transform:uppercase; letter-spacing:.5px; border:1px solid var(--line); border-radius:999px; padding:2px 5px; color:var(--muted); }
+  .command-state.ok { color:var(--ok); border-color:rgba(var(--ok-rgb),0.28); }
+  .command-state.warn { color:var(--amber); border-color:rgba(var(--amber-rgb),0.28); }
+  .command-state.critical { color:var(--magenta); border-color:rgba(var(--violet-rgb),0.30); }
+
   /* ── Telemetry / console / intel ────────────────── */
   .spark-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:5px; }
   .spark-name { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1.2px; }
@@ -366,8 +384,7 @@
   <button class="page-tab active" data-page="0" type="button">CORE</button>
   <button class="page-tab" data-page="1" type="button">Droids</button>
   <button class="page-tab" data-page="2" type="button">Mission</button>
-  <button class="page-tab" data-page="3" type="button">Tel</button>
-  <button class="page-tab" data-page="4" type="button">Vault</button>
+  <button class="page-tab" data-page="3" type="button">Control</button>
 </div>
 
 <div class="pages">
@@ -590,72 +607,27 @@
   </div>
 </section>
 <section class="page" data-page="3">
-  <div class="telemetry-grid">
-    <div class="card spark-card">
-      <div class="spark-head"><span class="spark-name">CPU</span><b class="spark-value" id="spark-cpu-val">--%</b></div>
-      <svg class="sparkline" id="spark-cpu" viewBox="0 0 220 72" preserveAspectRatio="none"></svg>
-      <div class="spark-meta"><span id="spark-cpu-min">min --</span><span id="spark-cpu-max">max --</span></div>
+  <div class="control-grid">
+    <div class="card calendar-card" style="flex-direction:column;">
+      <div class="card-title">UPCOMING CALENDAR <span id="calendar-status">--</span></div>
+      <div class="control-list" id="calendar-events"></div>
     </div>
-    <div class="card spark-card">
-      <div class="spark-head"><span class="spark-name">RAM</span><b class="spark-value" id="spark-ram-val">--%</b></div>
-      <svg class="sparkline" id="spark-ram" viewBox="0 0 220 72" preserveAspectRatio="none"></svg>
-      <div class="spark-meta"><span id="spark-ram-min">min --</span><span id="spark-ram-max">max --</span></div>
-    </div>
-    <div class="card spark-card">
-      <div class="spark-head"><span class="spark-name">Thermal</span><b class="spark-value" id="spark-temp-val">--°C</b></div>
-      <svg class="sparkline" id="spark-temp" viewBox="0 0 220 72" preserveAspectRatio="none"></svg>
-      <div class="spark-meta"><span id="spark-temp-min">min --</span><span id="spark-temp-max">max --</span></div>
-    </div>
-    <div class="card spark-card spark-wide">
-      <div class="spark-head"><span class="spark-name">Network RX / TX</span><b class="spark-value" id="spark-net-val">--</b></div>
-      <svg class="sparkline" id="spark-net" viewBox="0 0 460 72" preserveAspectRatio="none"></svg>
-      <div class="spark-meta"><span id="spark-net-min">rx --</span><span id="spark-net-max">tx --</span></div>
-    </div>
-    <div class="card spark-card">
-      <div class="spark-head"><span class="spark-name">AI Usage</span><b class="spark-value" id="spark-ai-val">--</b></div>
-      <svg class="sparkline" id="spark-ai" viewBox="0 0 220 72" preserveAspectRatio="none"></svg>
-      <div class="spark-meta"><span id="spark-ai-min">GPT --</span><span id="spark-ai-max">Claude --</span></div>
-    </div>
-    <div class="card spark-card spark-wide">
-      <div class="spark-head"><span class="spark-name">Disk Read / Write</span><b class="spark-value" id="spark-diskio-val">--</b></div>
-      <svg class="sparkline" id="spark-diskio" viewBox="0 0 460 72" preserveAspectRatio="none"></svg>
-      <div class="spark-meta"><span id="spark-diskio-min">read --</span><span id="spark-diskio-max">write --</span></div>
-    </div>
-    <div class="card spark-card">
-      <div class="spark-head"><span class="spark-name">Load</span><b class="spark-value" id="spark-load-val">--</b></div>
-      <svg class="sparkline" id="spark-load" viewBox="0 0 220 72" preserveAspectRatio="none"></svg>
-      <div class="spark-meta"><span id="spark-load-min">1m --</span><span id="spark-load-max">15m --</span></div>
-    </div>
-  </div>
-</section>
-<section class="page" data-page="4">
-  <div class="vault-grid">
-    <div class="card vault-summary-card" style="flex-direction:column;">
-      <div class="card-title">◇ VAULT SIGNAL</div>
-      <div class="kv-grid">
-        <div class="kv"><span>Notes</span><b id="vault-notes">--</b></div>
-        <div class="kv"><span>Size</span><b id="vault-size">--</b></div>
-        <div class="kv"><span>Status</span><b id="vault-present">--</b></div>
-        <div class="kv"><span>KSP</span><b id="vault-ksp-count">--</b></div>
+    <div class="card loops-card" style="flex-direction:column;">
+      <div class="card-title">TODOS / OPEN LOOPS <span id="loops-status">--</span></div>
+      <div class="loops-stack">
+        <div class="loop-section">
+          <div class="loop-heading"><span>Tasks</span><span id="todo-count">0</span></div>
+          <div class="control-list" id="todo-list"></div>
+        </div>
+        <div class="loop-section">
+          <div class="loop-heading"><span>Loops / Inbox</span><span id="loop-count">0</span></div>
+          <div class="control-list" id="loop-list"></div>
+        </div>
       </div>
     </div>
-    <div class="card vault-recent-card" style="flex-direction:column;">
-      <div class="card-title">✦ RECENT INTEL</div>
-      <div class="intel-list" id="vault-recent"></div>
-    </div>
-    <div class="card vault-ksp-card" style="flex-direction:column;">
-      <div class="card-title">◈ KSP NOTES</div>
-      <div class="intel-list" id="vault-ksp"></div>
-    </div>
-    <div class="card vault-repo-card" style="flex-direction:column;">
-      <div class="card-title">⌁ COMMAND DECK</div>
-      <div class="repo-box">
-        <div class="kv"><span>Repo Branch</span><b id="repo-branch">--</b></div>
-        <div class="kv"><span>HEAD</span><b id="repo-head">--</b></div>
-        <div class="kv"><span>Working Tree</span><b id="repo-dirty">--</b></div>
-        <div class="kv"><span>Upstream</span><b id="repo-sync">--</b></div>
-        <div class="mood-line" id="droid-mood">Awaiting telemetry.</div>
-      </div>
+    <div class="card commands-card" style="flex-direction:column;">
+      <div class="card-title">MISSION COMMANDS</div>
+      <div class="control-list" id="mission-commands"></div>
     </div>
   </div>
 </section>
@@ -666,7 +638,7 @@ var CPU_CIRC = Math.PI * 35;
 var lastStatusData = null;
 var lastStatusOkAt = 0;
 var currentPage = 0;
-var pageCount = 5;
+var pageCount = 4;
 var historyLimit = 90;
 var telemetryHistory = {cpu:[], ram:[], temp:[], netRx:[], netTx:[], diskRd:[], diskWt:[], aiGpt:[], aiClaude:[], load:[]};
 
@@ -1023,48 +995,6 @@ function setTextAndTitle(id, value){
   el.title = text;
 }
 
-function renderTelemetry(d){
-  var cpu = telemetryHistory.cpu, ram = telemetryHistory.ram, temp = telemetryHistory.temp;
-  var cpuMm = seriesMinMax(cpu), ramMm = seriesMinMax(ram), tempMm = seriesMinMax(temp);
-  document.getElementById('spark-cpu-val').textContent = (cpu[cpu.length-1] || 0).toFixed(0)+'%';
-  document.getElementById('spark-cpu-min').textContent = 'min '+cpuMm.min.toFixed(0)+'%';
-  document.getElementById('spark-cpu-max').textContent = 'max '+cpuMm.max.toFixed(0)+'%';
-  document.getElementById('spark-ram-val').textContent = (ram[ram.length-1] || 0).toFixed(0)+'%';
-  document.getElementById('spark-ram-min').textContent = 'min '+ramMm.min.toFixed(0)+'%';
-  document.getElementById('spark-ram-max').textContent = 'max '+ramMm.max.toFixed(0)+'%';
-  document.getElementById('spark-temp-val').textContent = (temp[temp.length-1] || 0).toFixed(1)+'°C';
-  document.getElementById('spark-temp-min').textContent = 'min '+tempMm.min.toFixed(0)+'°';
-  document.getElementById('spark-temp-max').textContent = 'max '+tempMm.max.toFixed(0)+'°';
-  renderSparkSvg('spark-cpu', [telemetryHistory.cpu], 100);
-  renderSparkSvg('spark-ram', [telemetryHistory.ram], 100);
-  renderSparkSvg('spark-temp', [telemetryHistory.temp], 90);
-
-  var rx = formatSpeed(d.netRx || 0), tx = formatSpeed(d.netTx || 0);
-  document.getElementById('spark-net-val').textContent = '↓ '+rx.v+' '+rx.u+'  ↑ '+tx.v+' '+tx.u;
-  document.getElementById('spark-net-min').textContent = 'rx '+rx.v+' '+rx.u;
-  document.getElementById('spark-net-max').textContent = 'tx '+tx.v+' '+tx.u;
-  renderSparkSvg('spark-net', [telemetryHistory.netRx, telemetryHistory.netTx], null);
-
-  var rd = formatSpeed(d.diskRd || 0), wt = formatSpeed(d.diskWt || 0);
-  document.getElementById('spark-diskio-val').textContent = 'R '+rd.v+' '+rd.u+'  W '+wt.v+' '+wt.u;
-  document.getElementById('spark-diskio-min').textContent = 'read '+rd.v+' '+rd.u;
-  document.getElementById('spark-diskio-max').textContent = 'write '+wt.v+' '+wt.u;
-  renderSparkSvg('spark-diskio', [telemetryHistory.diskRd, telemetryHistory.diskWt], null);
-
-  var gpt = telemetryHistory.aiGpt[telemetryHistory.aiGpt.length-1] || 0;
-  var claude = telemetryHistory.aiClaude[telemetryHistory.aiClaude.length-1] || 0;
-  document.getElementById('spark-ai-val').textContent = 'GPT '+gpt.toFixed(0)+'% / Claude '+claude.toFixed(0)+'%';
-  document.getElementById('spark-ai-min').textContent = 'GPT '+gpt.toFixed(0)+'%';
-  document.getElementById('spark-ai-max').textContent = 'Claude '+claude.toFixed(0)+'%';
-  renderSparkSvg('spark-ai', [telemetryHistory.aiGpt, telemetryHistory.aiClaude], 100);
-
-  var load = d.load || [0,0,0];
-  document.getElementById('spark-load-val').textContent = Number(load[0] || 0).toFixed(2);
-  document.getElementById('spark-load-min').textContent = '1m '+Number(load[0] || 0).toFixed(2);
-  document.getElementById('spark-load-max').textContent = '15m '+Number(load[2] || 0).toFixed(2);
-  renderSparkSvg('spark-load', [telemetryHistory.load], null);
-}
-
 function renderCaptainConsole(d, warnings){
   var load = d.load || [0,0,0];
   var rd = formatSpeed(d.diskRd || 0), wt = formatSpeed(d.diskWt || 0);
@@ -1172,21 +1102,79 @@ function droidMoodLine(warnings, d){
   if((warnings || []).length) return 'Attention: '+warnings.length+' item'+(warnings.length === 1 ? '' : 's');
   return 'Nominal: systems clear, vault quiet.';
 }
-function renderVaultIntel(d, warnings){
-  var vault = d.vault_intel || {};
-  document.getElementById('vault-notes').textContent = vault.present ? String(vault.note_count || 0) : 'missing';
-  document.getElementById('vault-size').textContent = vault.present ? formatBytes(vault.vault_size_bytes || 0) : '--';
-  document.getElementById('vault-present').textContent = vault.present ? 'online' : 'not found';
-  document.getElementById('vault-ksp-count').textContent = vault.present ? String((vault.ksp_notes || []).length) : '--';
-  renderIntelList('vault-recent', vault.recent_notes || [], vault.present ? 'No recent notes' : 'Vault not present');
-  renderIntelList('vault-ksp', vault.ksp_notes || [], vault.present ? 'No KSP notes' : 'Vault not present');
+function renderCalendar(d){
+  var cal = d.calendar_upcoming || {};
+  var statusEl = document.getElementById('calendar-status');
+  if(statusEl) statusEl.textContent = compactStatus(cal.status || '--');
+  var el = document.getElementById('calendar-events');
+  if(!el) return;
+  var events = (cal.events || []).slice(0, 6);
+  if(!events.length){
+    var empty = cal.error ? ('Calendar '+(cal.status || 'error')) : 'No upcoming events';
+    el.innerHTML = '<div class="warn-empty" title="'+esc(cal.error || '')+'">'+esc(empty)+'</div>';
+    return;
+  }
+  el.innerHTML = events.map(function(event){
+    var detail = event.location ? event.location : (event.status || '');
+    return '<div class="control-item calendar-item">'
+      +'<span class="control-kicker calendar-kicker" title="'+esc(event.start || '')+'">'
+      +'<span class="calendar-day">'+esc(truncateText(event.day || event.time || '--', 9))+'</span>'
+      +'<span class="calendar-clock">'+esc(truncateText(event.clock || '--', 7))+'</span>'
+      +'</span>'
+      +'<div class="control-main">'
+      +'<div class="control-title" title="'+esc(event.title || '')+'">'+esc(truncateText(event.title || '(no title)', 34))+'</div>'
+      +'<div class="control-detail" title="'+esc(detail || '')+'">'+esc(truncateText(detail || 'calendar', 38))+'</div>'
+      +'</div></div>';
+  }).join('');
+}
 
-  var repo = d.repo_status || {};
-  document.getElementById('repo-branch').textContent = repo.branch || '--';
-  document.getElementById('repo-head').textContent = repo.head || '--';
-  document.getElementById('repo-dirty').textContent = repo.dirty ? (repo.changed_files || 0)+' changed' : 'clean';
-  document.getElementById('repo-sync').textContent = repo.upstream ? ('+'+(repo.ahead || 0)+' / -'+(repo.behind || 0)) : 'local only';
-  document.getElementById('droid-mood').textContent = droidMoodLine(warnings || [], d);
+function renderControlRows(id, items, emptyText, label){
+  var el = document.getElementById(id);
+  if(!el) return;
+  items = (items || []).slice(0, id === 'todo-list' ? 5 : 4);
+  if(!items.length){
+    el.innerHTML = '<div class="warn-empty">'+esc(emptyText)+'</div>';
+    return;
+  }
+  el.innerHTML = items.map(function(item){
+    return '<div class="control-item warn">'
+      +'<span class="control-kicker">'+esc(truncateText(item.source || label || 'note', 10))+'</span>'
+      +'<div class="control-main">'
+      +'<div class="control-title" title="'+esc(item.title || '')+'">'+esc(truncateText(item.title || 'Untitled', 48))+'</div>'
+      +'<div class="control-detail">'+esc(label || 'open')+'</div>'
+      +'</div></div>';
+  }).join('');
+}
+
+function renderLifeControl(d){
+  renderCalendar(d);
+  var loops = d.obsidian_loops || {};
+  var todos = (loops.todos || []).slice(0, 8);
+  var open = (loops.open_loops || []).concat(loops.inbox || []).slice(0, 8);
+  var loopsStatus = document.getElementById('loops-status');
+  if(loopsStatus) loopsStatus.textContent = compactStatus(loops.status || '--');
+  document.getElementById('todo-count').textContent = String(todos.length);
+  document.getElementById('loop-count').textContent = String(open.length);
+  renderControlRows('todo-list', todos, loops.present ? 'No task markers' : 'Hermes vault missing', 'todo');
+  renderControlRows('loop-list', open, loops.present ? 'No open loops' : 'Hermes vault missing', 'loop');
+
+  var commands = (d.mission_control && d.mission_control.commands) || [];
+  var target = document.getElementById('mission-commands');
+  if(!target) return;
+  if(!commands.length){
+    target.innerHTML = '<div class="warn-empty">No commands</div>';
+    return;
+  }
+  target.innerHTML = commands.slice(0, 5).map(function(cmd){
+    var sev = severityClass(cmd.state || 'ok');
+    return '<div class="control-item command-item '+sev+'">'
+      +'<div class="control-main">'
+      +'<div class="control-title" title="'+esc(cmd.title || '')+'">'+esc(truncateText(cmd.title || 'Command', 28))+'</div>'
+      +'<div class="control-detail" title="'+esc(cmd.detail || '')+'">'+esc(truncateText(cmd.detail || '', 32))+'</div>'
+      +'</div>'
+      +'<span class="command-state '+sev+'">'+esc(compactStatus(cmd.state || 'ok'))+'</span>'
+      +'</div>';
+  }).join('');
 }
 
 function showPage(idx){
@@ -1370,9 +1358,8 @@ async function fetchMetrics(){
     var warnings = renderWarnings(d, null);
     renderMissionLog(d);
     renderServiceHealth(d);
-    renderTelemetry(d);
     renderCaptainConsole(d, warnings);
-    renderVaultIntel(d, warnings);
+    renderLifeControl(d);
 
     // ── Model + status ───────────────────────────────
     var modelInfo = d.model_info || {model:d.hermes_model||'', provider:''};

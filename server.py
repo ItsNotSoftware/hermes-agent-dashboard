@@ -4,6 +4,7 @@
 import base64
 import json
 import os
+import re
 import socket
 import subprocess
 import time
@@ -27,6 +28,12 @@ claude_cache = {'data': None, 'ts': 0}
 service_health_cache = {'data': None, 'ts': 0}
 vault_cache = {'data': None, 'ts': 0}
 git_cache = {'data': None, 'ts': 0}
+calendar_cache = {'data': None, 'ts': 0}
+obsidian_loops_cache = {'data': None, 'ts': 0}
+
+GOOGLE_API_SCRIPT = Path.home() / '.hermes' / 'skills' / 'productivity' / 'google-workspace' / 'scripts' / 'google_api.py'
+VAULT_PATH = Path.home() / 'Documents' / 'Obsidian Vault'
+HERMES_VAULT_PATH = VAULT_PATH / 'Hermes'
 
 
 def _parse_iso_timestamp(value):
@@ -48,6 +55,51 @@ def _format_local_timestamp(value):
 
 def _iso_now():
     return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+
+
+def _compact_title(value, max_len=84):
+    text = str(value or '')
+    text = re.sub(r'<!--.*?-->', '', text)
+    text = re.sub(r'`([^`]*)`', r'\1', text)
+    text = re.sub(r'!\[[^\]]*\]\([^)]+\)', '', text)
+    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+    text = re.sub(r'\[\[([^\]|]+)(?:\|([^\]]+))?\]\]', lambda m: m.group(2) or m.group(1), text)
+    text = re.sub(r'https?://\S+', '', text)
+    text = re.sub(r'[#*_~>|]', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip(' -:\t')
+    if len(text) > max_len:
+        text = text[:max_len - 1].rstrip() + '…'
+    return text
+
+
+def _event_time_parts(start_value):
+    if not start_value:
+        return {'label': '--', 'day': '--', 'clock': '--'}
+    try:
+        raw = str(start_value)
+        if len(raw) == 10:
+            dt = datetime.fromisoformat(raw)
+            day = dt.strftime('%a %d/%m').upper()
+            return {'label': f'{day} all day', 'day': day, 'clock': 'ALL DAY'}
+        dt = datetime.fromisoformat(raw.replace('Z', '+00:00')).astimezone()
+        day = dt.strftime('%a %d/%m').upper()
+        clock = dt.strftime('%H:%M')
+        return {'label': f'{day} {clock}', 'day': day, 'clock': clock}
+    except Exception:
+        fallback = str(start_value)[:16]
+        return {'label': fallback, 'day': fallback[:6] or '--', 'clock': fallback[6:].strip() or '--'}
+
+
+def _event_time_label(start_value):
+    return _event_time_parts(start_value)['label']
+
+
+def _compact_command_error(stdout, stderr, fallback):
+    text = str(stderr or stdout or fallback or '')
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if lines:
+        text = lines[-1]
+    return _compact_title(text, 120)
 
 
 def _claude_project_dir(project_path):
@@ -1256,6 +1308,223 @@ def get_service_health():
     return data
 
 
+def get_calendar_upcoming():
+    """Return upcoming Google Calendar events through the existing Hermes read-only list command."""
+    global calendar_cache
+    now = time.time()
+    if calendar_cache['data'] and (now - calendar_cache['ts']) < 120:
+        return calendar_cache['data']
+
+    data = {
+        'source': str(GOOGLE_API_SCRIPT),
+        'status': 'missing' if not GOOGLE_API_SCRIPT.exists() else 'ok',
+        'checked_at': _iso_now(),
+        'events': [],
+        'error': '',
+    }
+    if not GOOGLE_API_SCRIPT.exists():
+        calendar_cache = {'data': data, 'ts': now}
+        return data
+
+    try:
+        result = subprocess.run(
+            ['python3', str(GOOGLE_API_SCRIPT), 'calendar', 'list', '--max', '6'],
+            capture_output=True,
+            text=True,
+            timeout=7,
+        )
+        if result.returncode != 0:
+            err = _compact_command_error(result.stdout, result.stderr, f'exit {result.returncode}')
+            raise RuntimeError(err or f'calendar command exited {result.returncode}')
+
+        raw_events = json.loads(result.stdout or '[]')
+        if not isinstance(raw_events, list):
+            raw_events = []
+        events = []
+        for item in raw_events[:6]:
+            if not isinstance(item, dict):
+                continue
+            start = str(item.get('start') or '')
+            title = _compact_title(item.get('summary') or '(no title)', 72)
+            if not title:
+                title = '(no title)'
+            time_parts = _event_time_parts(start)
+            events.append({
+                'title': title,
+                'start': start,
+                'time': time_parts['label'],
+                'day': time_parts['day'],
+                'clock': time_parts['clock'],
+                'location': _compact_title(item.get('location') or '', 48),
+                'status': _compact_title(item.get('status') or '', 24),
+            })
+        data['events'] = events[:6]
+    except subprocess.TimeoutExpired:
+        data['status'] = 'timeout'
+        data['error'] = 'calendar list timed out'
+    except Exception as exc:
+        data['status'] = 'error'
+        data['error'] = _compact_title(str(exc), 120)
+
+    # Keep a stale successful list visible during transient Google/network failures.
+    if data['status'] != 'ok' and calendar_cache['data'] and calendar_cache['data'].get('events'):
+        stale = dict(calendar_cache['data'])
+        stale['status'] = data['status']
+        stale['error'] = data['error']
+        stale['checked_at'] = data['checked_at']
+        data = stale
+
+    calendar_cache = {'data': data, 'ts': now}
+    return data
+
+
+def _empty_obsidian_loops():
+    return {
+        'path': str(HERMES_VAULT_PATH),
+        'present': HERMES_VAULT_PATH.exists() and HERMES_VAULT_PATH.is_dir(),
+        'checked_at': _iso_now(),
+        'todos': [],
+        'open_loops': [],
+        'inbox': [],
+        'task_count': 0,
+        'loop_count': 0,
+        'inbox_count': 0,
+        'status': 'ok',
+        'error': '',
+    }
+
+
+def _task_title_from_line(line):
+    match = re.match(r'^\s*[-*+]\s+\[(?: |todo|TODO)\]\s+(.+?)\s*$', line)
+    if not match:
+        return ''
+    return _compact_title(match.group(1), 84)
+
+
+def _bullet_title_from_line(line):
+    if re.match(r'^\s*[-*+]\s+\[[xX]\]\s+', line):
+        return ''
+    line = re.sub(r'^\s*(?:[-*+]|\d+[.)])\s+', '', line).strip()
+    line = re.sub(r'^\[(?: |todo|TODO)\]\s+', '', line).strip()
+    return _compact_title(line, 84)
+
+
+def _append_unique(items, seen, title, source):
+    if not title:
+        return
+    lowered = title.lower()
+    skip = {
+        '_add new captures below this line._',
+        '_add active loops here._',
+        'add new captures below this line.',
+        'add active loops here.',
+    }
+    if lowered in skip or lowered == '-':
+        return
+    key = (lowered, source)
+    if key in seen:
+        return
+    seen.add(key)
+    items.append({'title': title, 'source': source})
+
+
+def _collect_note_bullets(path, source, section_names=None, cap=8):
+    items = []
+    seen = set()
+    in_allowed_section = section_names is None
+    try:
+        for raw_line in path.read_text(errors='ignore').splitlines():
+            line = raw_line.rstrip()
+            heading = re.match(r'^(#{1,6})\s+(.+?)\s*$', line)
+            if heading:
+                title = _compact_title(heading.group(2), 64).lower()
+                in_allowed_section = section_names is None or title in section_names
+                continue
+            if not in_allowed_section:
+                continue
+            if re.match(r'^\s*(?:[-*+]|\d+[.)])\s+', line):
+                title = _task_title_from_line(line) or _bullet_title_from_line(line)
+                _append_unique(items, seen, title, source)
+                if len(items) >= cap:
+                    break
+    except Exception:
+        return items
+    return items
+
+
+def get_obsidian_loops():
+    """Read only the requested Hermes notes plus unchecked task markers in Hermes/*.md."""
+    global obsidian_loops_cache
+    now = time.time()
+    if obsidian_loops_cache['data'] and (now - obsidian_loops_cache['ts']) < 60:
+        return obsidian_loops_cache['data']
+
+    data = _empty_obsidian_loops()
+    if not data['present']:
+        data['status'] = 'missing'
+        obsidian_loops_cache = {'data': data, 'ts': now}
+        return data
+
+    try:
+        inbox_path = HERMES_VAULT_PATH / 'Inbox.md'
+        loops_path = HERMES_VAULT_PATH / 'Open Loops.md'
+        if inbox_path.exists():
+            data['inbox'] = _collect_note_bullets(
+                inbox_path,
+                'Inbox',
+                {'unprocessed captures'},
+                cap=5,
+            )
+        if loops_path.exists():
+            data['open_loops'] = _collect_note_bullets(
+                loops_path,
+                'Open Loops',
+                {'active open loops', 'urgent / time-sensitive', 'projects', 'thesis / university', 'waiting on someone'},
+                cap=6,
+            )
+
+        todos = []
+        seen = set()
+        for path in sorted(HERMES_VAULT_PATH.glob('*.md')):
+            try:
+                for line in path.read_text(errors='ignore').splitlines():
+                    title = _task_title_from_line(line)
+                    if title:
+                        _append_unique(todos, seen, title, path.stem)
+                    if len(todos) >= 8:
+                        break
+            except Exception:
+                continue
+            if len(todos) >= 8:
+                break
+        data['todos'] = todos[:8]
+        data['task_count'] = len(data['todos'])
+        data['loop_count'] = len(data['open_loops'])
+        data['inbox_count'] = len(data['inbox'])
+    except Exception as exc:
+        data['status'] = 'error'
+        data['error'] = _compact_title(str(exc), 120)
+
+    obsidian_loops_cache = {'data': data, 'ts': now}
+    return data
+
+
+def build_mission_control(calendar_data, obsidian_data, crons):
+    events = calendar_data.get('events', []) if isinstance(calendar_data, dict) else []
+    todos = obsidian_data.get('todos', []) if isinstance(obsidian_data, dict) else []
+    loops = obsidian_data.get('open_loops', []) if isinstance(obsidian_data, dict) else []
+    inbox = obsidian_data.get('inbox', []) if isinstance(obsidian_data, dict) else []
+    failed = [job for job in crons if job.get('last_status') and job.get('last_status') != 'ok']
+    paused = [job for job in crons if job.get('state') == 'paused']
+    commands = [
+        {'title': 'Review today', 'detail': f'{len(events)} calendar items queued', 'state': 'ok' if events else 'idle'},
+        {'title': 'Process loops', 'detail': f'{len(todos) + len(loops)} todos/open loops', 'state': 'warn' if todos or loops else 'ok'},
+        {'title': 'Clear inbox', 'detail': f'{len(inbox)} unprocessed captures', 'state': 'warn' if inbox else 'ok'},
+        {'title': 'Check droids', 'detail': f'{len(failed)} failed / {len(paused)} paused jobs', 'state': 'critical' if failed else ('warn' if paused else 'ok')},
+    ]
+    return {'commands': commands}
+
+
 def get_vault_intel():
     """Return safe Obsidian vault metadata only; never read note contents."""
     global vault_cache
@@ -1263,7 +1532,7 @@ def get_vault_intel():
     if vault_cache['data'] and (now - vault_cache['ts']) < 60:
         return vault_cache['data']
 
-    vault_path = Path.home() / 'Documents' / 'Obsidian Vault'
+    vault_path = VAULT_PATH
     data = {
         'path': str(vault_path),
         'present': vault_path.exists() and vault_path.is_dir(),
@@ -1439,6 +1708,8 @@ class Handler(SimpleHTTPRequestHandler):
             model_info = get_hermes_model_info()
             crons = get_cron_jobs()
             service_health = get_service_health()
+            calendar_upcoming = get_calendar_upcoming()
+            obsidian_loops = get_obsidian_loops()
             status = {
                 'hermes_model': model_info.get('model', ''),
                 'model_info': model_info,
@@ -1470,6 +1741,9 @@ class Handler(SimpleHTTPRequestHandler):
                 'claude_usage': claude_data,
                 'vault_intel': get_vault_intel(),
                 'repo_status': get_repo_status(),
+                'calendar_upcoming': calendar_upcoming,
+                'obsidian_loops': obsidian_loops,
+                'mission_control': build_mission_control(calendar_upcoming, obsidian_loops, crons),
             }
             
             self.wfile.write(json.dumps(status).encode())
