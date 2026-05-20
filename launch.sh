@@ -1,9 +1,24 @@
 #!/bin/bash
-echo "Waiting for dashboard server..."
-for i in $(seq 1 10); do
-    if curl -sf http://localhost:9200/api/status > /dev/null 2>&1; then
-        break
-    fi
-    sleep 1
-done
-chromium --kiosk --no-first-run --disable-infobars --disable-session-crashed-bubble --disable-translate --no-default-browser-check --password-store=basic --force-device-scale-factor=1.0 --window-size=800,480 http://localhost:9200 2>/dev/null &
+# Launch the Hermes Agent Dashboard (Go binary, no Chromium kiosk).
+#
+# The binary is the GUI: no separate backend, no HTTP server, no browser.
+# Build it with `go build -o dashboard ./cmd/dashboard` from the repo root.
+
+set -e
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+BIN="$DIR/dashboard"
+
+if [ ! -x "$BIN" ]; then
+    echo "dashboard binary not found at $BIN" >&2
+    echo "build with: go build -o $BIN ./cmd/dashboard" >&2
+    exit 1
+fi
+
+# Ensure XWayland session vars are present when launched from a non-graphical
+# context (e.g. systemd). Inside an interactive shell these are already set.
+: "${DISPLAY:=:0}"
+: "${XAUTHORITY:=$HOME/.Xauthority}"
+export DISPLAY XAUTHORITY
+
+exec "$BIN" "$@"

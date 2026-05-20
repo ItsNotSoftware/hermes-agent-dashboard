@@ -1,14 +1,16 @@
 [Unit]
-Description=RPi Dashboard Backend
-After=network.target
+Description=Hermes Agent Dashboard (Go GUI)
+After=graphical-session.target
+PartOf=graphical-session.target
 
 [Service]
 Type=simple
-User=diogo
-WorkingDirectory=/home/diogo/dashboard
-ExecStart=/usr/bin/python3 /home/diogo/dashboard/server.py
-Restart=always
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=%h/.Xauthority
+WorkingDirectory=%h/Repos/hermes-agent-dashboard
+ExecStart=%h/Repos/hermes-agent-dashboard/dashboard
+Restart=on-failure
 RestartSec=5
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=graphical-session.target

@@ -3,3 +3,9 @@ __pycache__/
 *.pyo
 .env
 *.log
+
+# Go build artifacts
+/dashboard
+/cmd/dashboard/dashboard
+*.test
+*.out

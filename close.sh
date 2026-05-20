@@ -1,4 +1,5 @@
 #!/bin/bash
-# Kill chromium dashboard window
-pkill -f "localhost:9200" 2>/dev/null
+# Stop the Hermes Agent Dashboard (Go binary).
+pkill -f "/dashboard$" 2>/dev/null
+pkill -x dashboard 2>/dev/null
 echo "Dashboard closed"
